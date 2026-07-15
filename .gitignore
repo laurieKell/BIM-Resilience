@@ -1,0 +1,30 @@
+# Local / IDE
+.Rproj.user
+.Rhistory
+.RData
+.Ruserdata
+*.html
+
+# Local analysis workspace (~hundreds of MB: SS3, SAM, OM, TAC caches).
+# Layout is documented in data/README.md. Package ships starting FLStocks in
+# inst/extdata/ instead.
+/data/**
+!/data/README.md
+!/data/.gitignore
+
+# Knit / LaTeX products (sources under report/ stay tracked)
+/report/html/
+/report/pdf/
+/report/docx/
+/report/figs/
+/report/latex/figs/
+/report/latex/*.pdf
+/report/latex/*.aux
+/report/latex/*.log
+/report/latex/*.out
+/report/latex/*.toc
+/report/latex/qa_report.txt
+/report/latex/takeaways.csv
+
+# Optional local caches
+*.Rcheck/

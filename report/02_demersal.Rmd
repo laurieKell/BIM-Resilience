@@ -1,0 +1,291 @@
+---
+title: "Demersal stocks (ICES): TAC simulations"
+subtitle: "Read in stocks, updates, and simulates advice"
+author: "Laurence T. Kell"
+date: "`r Sys.Date()`"
+# Knit → HTML under report/html/. For PDF/Word see report/knit_to_report.R
+# (knit_to_report(..., format = "pdf"|"docx") or render_report(...)).
+knit: (function(inputFile, encoding) { e <- new.env(); sys.source(file.path(dirname(normalizePath(inputFile)), "knit_to_report.R"), envir = e, keep.source = FALSE); e$knit_to_report(inputFile, encoding) })
+output:
+  html_document:
+    self_contained: false
+    lib_dir: "html/libs/02_demersal"
+    toc: true
+    toc_float: true
+    code_folding: show
+  pdf_document:
+    toc: true
+    number_sections: true
+    fig_caption: true
+  word_document:
+    toc: true
+---
+
+```{r}
+knitr::opts_chunk$set(warning = FALSE, 
+                      message = FALSE)
+
+options(warn=-1) 
+```
+
+```{r paths}
+# Change once if the project moves; package code lives in R/.
+projectRoot = "C:/active/Resilience"
+source(file.path(projectRoot, "report/ensureBimResilience.R"))
+ensureBimResilience(projectRoot)
+list2env(resiliencePaths(projectRoot), envir = environment())
+```
+
+# Purpose
+
+This file runs the **demersal** workflow in three stages: 
+  **(i)** get chosen stocks, 
+  **(ii)** update to the current year, 
+  **(iii)** simulate future TACs. 
+  
+Summaries and discussion are found in `report/00_report.Rmd`.
+
+**Principal outputs:** `data/om/dem-stks.RData`, `data/om/dem-om.RData`, `data/TAC/dem-fct.RData`, `data/TAC/csv/dem-f.csv`.
+---
+
+```{r libraries}
+loadReportLibraries()
+iFig = 0
+```
+
+```{r sag}
+list2env(
+  loadSagBundle(
+    projectRoot = projectRoot,
+    fishery = "Demersal",
+    sagYears = 2025,
+    sdgYear = 2025),
+  envir = environment())
+```
+
+# (i) Get chosen stocks
+
+Starting FLStocks come from the packaged snapshot (`loadShippedStocks("demersal")`).
+Rebuild from local SS3 / SAM / `icesdata` only when assessments change, then run
+`source("data-raw/ship_stocks.R")` to refresh `inst/extdata/`.
+
+
+```{r demersals}
+# Set TRUE to rebuild from local SS3/SAM (needs data/inputs/), then re-ship.
+rebuildDemStks = FALSE
+
+if (isTRUE(rebuildDemStks)) {
+  data(icesdata)
+  stks = icesdata[sids$sid]
+
+  load(file.path(dirSAM, "whgCSSAM.RData"))
+  stks[["whg.27.7b-ce-k"]] = SAM2FLStock(object = fit)
+
+  load(file.path(dirSAM, "whgNSSAM.RData"))
+  stks[["whg.27.47d"]] = window(SAM2FLStock(object = fit), end = 2024)
+  rm(fit)
+
+  id = "whg.27.47d"
+  naFill = function(x) { x[is.na(x)] = 1e-6; x }
+  catch.n(stks[[id]])     = naFill(catch.n(stks[[id]]))
+  catch.wt(stks[[id]])    = naFill(catch.wt(stks[[id]]))
+  discards.n(stks[[id]])  = naFill(discards.n(stks[[id]]))
+  discards.wt(stks[[id]]) = naFill(discards.wt(stks[[id]]))
+  landings.n(stks[[id]])  = naFill(landings.n(stks[[id]]))
+  landings.wt(stks[[id]]) = naFill(landings.wt(stks[[id]]))
+
+  anf.27.3a46 = readSS3(file.path(dirSS, "anf.27.3a46"))
+  stks[["anf.27.3a46"]] = anf.27.3a46$FLStock
+
+  ank.27.78abd = readSS3(file.path(dirSS, "ank.27.78abd"))
+  stks[["ank.27.78abd"]] = ank.27.78abd$FLStock
+  mat(stks[["ank.27.78abd"]])[,, 2] = mat(stks[["ank.27.78abd"]])[,, 1]
+  stks[["ank.27.78abd"]] = FLCore::simplify(stks[["ank.27.78abd"]], dims = "unit")
+
+  hke.27.3a46 = readSS3(file.path(dirSS, "hke.27.3a46-8abd"))
+  stks[["hke.27.3a46-8abd"]] = hke.27.3a46$FLStock
+  mat(stks[["hke.27.3a46-8abd"]])[, , "M2", 1] = mat(stks[["hke.27.3a46-8abd"]])[, , "F2", 1]
+  mat(stks[["hke.27.3a46-8abd"]])[, , "M3", 1] = mat(stks[["hke.27.3a46-8abd"]])[, , "F3", 1]
+  stks[["hke.27.3a46-8abd"]] = annualise(stks[["hke.27.3a46-8abd"]])
+
+  dir.create(dirOM, recursive = TRUE, showWarnings = FALSE)
+  save(stks, file = file.path(dirOM, "dem-stks.RData"))
+} else {
+  stks = loadShippedStocks("demersal")
+  dir.create(dirOM, recursive = TRUE, showWarnings = FALSE)
+  save(stks, file = file.path(dirOM, "dem-stks.RData"))
+}
+```
+
+
+
+```{r, plot}
+p1=plot(stks)+
+  facet_grid(qname~stock,scale="free")+
+  theme(legend.position="bottom")
+
+p2=ggplot(melt(subset(ts,sid%in%names(stks))[,-c(2,8:9)],id=c("sid","year")))+
+  geom_line(aes(year,value,col=sid))+
+  facet_grid(variable~sid,scale="free")+
+  theme(legend.position="bottom")
+
+demTS=rbind(cbind(Source="SAG",p2$data),
+            transmute(p1$data,Source="FLStock",year=year,sid=stock,variable=qname,value=data))
+demTS=merge(demTS,melt(transmute(rfpts,sid=sid,SB=MSYBtrigger,F=FMSY)),by=c("sid","variable"),all.x=TRUE)
+
+names(demTS)=gsub("\\.x","",     names(demTS))
+names(demTS)=gsub("\\.y",".rfpt",names(demTS))
+demTS[is.na(demTS$value.rfpt),"value.rfpt"]=1
+
+p3=ggplot(demTS)+
+  geom_line(aes(year,value/value.rfpt,col=Source))+
+  facet_grid(variable~sid,scale="free")+
+  theme(legend.position="bottom")
+
+p3
+```
+
+# (ii) Update to current year
+
+```{r update}
+updt = merge(demTS, ldply(stks, function(x) unlist(dims(x)["maxyear"]), .id = "sid"))
+updt = subset(updt, year >= maxyear & Source == "SAG")
+
+ctc = dlply(subset(updt, variable == "C"), .(sid), with, {
+  as.FLQuant(data.frame(data = value, year = year))
+})
+rec = dlply(subset(updt, variable == "Rec"), .(sid), with, {
+  window(as.FLQuant(data.frame(data = value, year = year)), end = 2027)
+})
+rec = llply(rec, function(x) { x[is.na(x)] = median(x[!is.na(x)]); x })
+
+# Catch years to bridge each stock from assessment maxyear through 2026.
+bridge = list(
+  "anf.27.3a46"      = 2025:2026,
+  "ank.27.78abd"     = 2023:2026,
+  "hke.27.3a46-8abd" = 2024:2026,
+  "meg.27.7b-k8abd"  = 2022:2026,
+  "meg.27.8c9a"      = 2022:2026,
+  "mon.27.78abd"     = 2021:2026,
+  "whg.27.47d"       = 2025:2026,
+  "whg.27.7b-ce-k"   = 2025:2026
+)
+
+id = "anf.27.3a46"
+# Fill projected recruit years from recent assessment recruits (in stks),
+# not from rec[] which only holds post-assessment SAG update years.
+rec[[id]][, ac(2025:2027)] = median(c(FLCore::rec(stks[[id]])[, ac(2020:2024)]))
+
+for (id in names(bridge)) {
+  stks[[id]] = window(
+    FLasher::fwd(
+      fwdWindow(stks[[id]], end = 2027),
+      sr = rec[[id]],
+      catch = advice[[id]][, ac(bridge[[id]])]
+    ),
+    end = 2026
+  )
+}
+
+# Ensure FLStocks container and stock names match sid keys (as in pelagics).
+stks = FLStocks(stks)
+for (id in names(stks)) name(stks[[id]]) = id
+```
+
+
+## Equilibrium and regimes (inputs to TAC scenarios)
+
+`calcEq` per stock, regime detection on stock--recruit residuals, and `recCurrent` for the Regime TAC row. **Result:** `dem-om.RData` and `ggDemRecResidual`.
+
+```{r equilibrium}
+list2env(
+  calcEqAndRegimes(stks = stks, sid = sids$sid, rfpts = rfpts),
+  envir = environment())
+save(stks, eqs, srs, rds, ts, rfpts, advice, recCurrent, recRegime,
+     file = file.path(dirOM, "dem-om.RData"))
+```
+
+```{r recruitment-residuals, fig.height=10, fig.width=14}
+ggDemRecResidual = plotRecResiduals(srs, rds)
+print(ggDemRecResidual)
+```
+
+**Figure `r iFig=iFig+1; iFig`** Demersal recruitment residuals (fitted stock--recruitment deviations); shaded polygons indicate regime segments.
+
+# (iii) Simulate future TACs
+
+Short-term catch scenarios via `simTAC()` / `saveSimTacResults()` (`fcstCtrl` + FLasher). **Result:** `dem-fct.RData`, `csv/dem-f.csv`, scenario `FLStock` lists.
+
+```{r forecasts}
+# Use in-memory objects from equilibrium (do not reload dem-om.RData —
+# that file may be stale relative to this knit). For an interactive restart,
+# load(file.path(dirOM, "dem-om.RData")) before running this chunk.
+assertAfterEquilibrium()
+
+list2env(
+  simTAC(
+    stks       = stks,
+    sid        = sids$sid,
+    eqs        = eqs,
+    srs        = srs,
+    recCurrent = recCurrent,
+    rfpts      = rfpts),
+  envir = environment())
+
+list2env(
+  saveSimTacResults(
+    fcstStks  = fcstStks,
+    rfpts     = rfpts,
+    ctcAdvice = advice,
+    dirTAC    = dirTAC,
+    prefix    = "dem"),
+  envir = environment())
+
+list2env(unpackFcstScenarios(fcstStks), envir = environment())
+```
+
+**Figure `r iFig=iFig+1; iFig`** Demersal forecasts: projected catch under status quo F, Fmsy, and regime recruitment scenarios.
+
+```{r forecast-catch-build}
+historical = FLStocks(stks)
+ggDemForecast = plotForecastCatch(fct)
+print(ggDemForecast)
+```
+
+```{r forecast-save-stks, eval=FALSE, include=FALSE}
+demFcstStks = c(fcstStks, list(Historical = historical))
+save(demFcstStks, file = file.path(dirOM, "dem-fcst-stks.RData"))
+```
+
+### Optional time-series and projection panels
+
+```{r, eval=FALSE, time-series-strips, fig.height=4, fig.width=14}
+tsPlots = buildOptionalTsStrips(stks, eqs, rfpts)
+ggDemTsSsb   = tsPlots$ssb
+ggDemTsF     = tsPlots$f
+ggDemTsCatch = tsPlots$catch
+ggarrange(plotlist = ggDemTsSsb,   ncol = 2)
+ggarrange(plotlist = ggDemTsF,     ncol = 2)
+ggarrange(plotlist = ggDemTsCatch, ncol = 2)
+```
+
+```{r, eval=FALSE, stock-plots, fig.height=12}
+plotOptionalProjections(fsq, historical, fmsy, rgm, eqs)
+```
+
+## Bundled plot objects
+
+```{r, eval=FALSE, save-plot-objects-demersal, include=FALSE}
+saveGroupPlotBundle(
+  prefix = "dem",
+  recResiduals = ggDemRecResidual,
+  forecastCatch = ggDemForecast,
+  timeSeries = list(ssb = ggDemTsSsb, f = ggDemTsF, catch = ggDemTsCatch),
+  dirOM = dirOM,
+  dirPlot = dirPlot)
+```
+
+## Summary
+
+Demersal workflow produces harmonized assessments, regime-aware recruitment diagnostics, multi-scenario short-term catch paths, SAG/advice diagnostic figures, and CSV export **`data/TAC/csv/dem-f.csv`**. Interpretation, methods narrative, and cross-stock conclusions are developed in `report/00_report.Rmd`.
+

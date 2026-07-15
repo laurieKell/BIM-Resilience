@@ -1,0 +1,50 @@
+Package: bimResilience
+Type: Package
+Title: BIM Fisheries Resilience Analysis Tools
+Version: 0.1.0
+Authors@R: person("L.T.", "Kell", email = "l.kell@bim.ie", role = c("aut", "cre"))
+Description: Tools for analyzing fisheries resilience under climate change scenarios.
+    Provides functions for stock assessment, forward projection, and scenario analysis
+    for ICES stocks including data-rich, data-limited, and Nephrops functional units.
+License: MIT + file LICENSE
+Encoding: UTF-8
+LazyData: false
+RoxygenNote: 7.3.3
+Depends: 
+    R (>= 4.0.0)
+Imports:
+    FLCore,
+    FLBRP,
+    FLasher,
+    FLife,
+    FLCandy,
+    mpb,
+    icesSAG,
+    ggplot2,
+    ggplotFL,
+    ggpubr,
+    ggridges,
+    ggh4x,
+    GGally,
+    ggExtra,
+    ggside,
+    RColorBrewer,
+    plyr,
+    dplyr,
+    reshape,
+    kableExtra,
+    purrr,
+    stringr,
+    readr,
+    readxl,
+    jsonlite,
+    future.apply
+Suggests:
+    testthat,
+    knitr,
+    rmarkdown,
+    ggplot2,
+    FLasher,
+    FLRebuild,
+    plyr
+VignetteBuilder: knitr

@@ -1,0 +1,278 @@
+---
+title: "Pelagic stocks (ICES): TAC simulations"
+subtitle: "Read in stocks, updates, and simulates advice"
+author: "Laurence T. Kell"
+date: "`r Sys.Date()`"
+# Knit → HTML under report/html/. For PDF/Word see report/knit_to_report.R
+# (knit_to_report(..., format = "pdf"|"docx") or render_report(...)).
+knit: (function(inputFile, encoding) { e <- new.env(); sys.source(file.path(dirname(normalizePath(inputFile)), "knit_to_report.R"), envir = e, keep.source = FALSE); e$knit_to_report(inputFile, encoding) })
+output:
+  html_document:
+    self_contained: false
+    lib_dir: "html/libs/01_pelagics"
+    toc: true
+    toc_float: true
+    code_folding: show
+  pdf_document:
+    toc: true
+    number_sections: true
+    fig_caption: true
+  word_document:
+    toc: true
+---
+
+```{r}
+knitr::opts_chunk$set(warning = FALSE, 
+                      message = FALSE)
+
+options(warn=-1) 
+```
+
+```{r paths}
+# Change once if the project moves; package code lives in R/.
+projectRoot = "C:/active/Resilience"
+source(file.path(projectRoot, "report/ensureBimResilience.R"))
+ensureBimResilience(projectRoot)
+list2env(resiliencePaths(projectRoot), envir = environment())
+```
+
+# Purpose
+
+This file runs the **pelagic** workflow in three stages: 
+  **(i)** get chosen stocks, 
+  **(ii)** update to the current year, 
+  **(iii)** simulate future TACs. 
+  
+Summaries and discussion are found in `report/00_report.Rmd`.
+
+**Principal outputs:** `data/om/pel-stks.RData`, `data/om/pel-om.RData`, `data/TAC/pel-fct.RData`, `data/TAC/csv/pel-f.csv`.
+---
+
+```{r libraries}
+loadReportLibraries()
+iFig = 0
+```
+
+```{r sag}
+list2env(
+  loadSagBundle(
+    projectRoot = projectRoot,
+    fishery = "Pelagics",
+    sagYears = 2025,
+    sdgYear = 2025,
+    dropHomEarly = TRUE),
+  envir = environment())
+```
+
+# (i) Get chosen stocks
+
+Starting FLStocks come from the packaged snapshot (`loadShippedStocks("pelagics")`).
+Rebuild from local SS3 / SAM / `icesdata` only when assessments change, then run
+`source("data-raw/ship_stocks.R")` to refresh `inst/extdata/`.
+
+
+```{r pelagics}
+# Set TRUE to rebuild from local SS3/SAM (needs data/inputs/), then re-ship.
+rebuildPelStks = FALSE
+
+if (isTRUE(rebuildPelStks)) {
+  data(icesdata)
+  load(file.path(dirIces, "Mac_FLStock_2025.RData"))
+  load(file.path(dirSAM, "whbSAM.RData"))
+  bocSS = readSS3(file.path(dirSS, "boc.27.6-8"))
+  homSS = readSS3(file.path(dirSS, "hom.27.2a3a4a5b6a7a-ce-k8"))
+  stks = FLStocks(
+    "boc.27.6-8"                    = bocSS[["FLStock"]],
+    "hom.27.2a3a4a5b6a7a-ce-k8"     = homSS[["FLStock"]][, -1],
+    "mac.27.nea"                    = mac,
+    "whb.27.1-91214"                = SAM2FLStock(object = fit))
+  for (id in names(stks)) name(stks[[id]]) = id
+  rm(fit)
+  dir.create(dirOM, recursive = TRUE, showWarnings = FALSE)
+  save(stks, file = file.path(dirOM, "pel-stks.RData"))
+} else {
+  stks = loadShippedStocks("pelagics")
+  dir.create(dirOM, recursive = TRUE, showWarnings = FALSE)
+  save(stks, file = file.path(dirOM, "pel-stks.RData"))
+}
+```
+
+
+
+```{r, plot}
+p1=plot(stks)+
+  facet_grid(qname~stock,scale="free")+
+  theme(legend.position="bottom")
+
+p2=ggplot(melt(subset(ts,sid%in%names(stks))[,-c(2,8:9)],id=c("sid","year")))+
+  geom_line(aes(year,value,col=sid))+
+  facet_grid(variable~sid,scale="free")+
+  theme(legend.position="bottom")
+
+pelTS=rbind(cbind(Source="SAG",p2$data),
+            transmute(p1$data,Source="FLStock",year=year,sid=stock,variable=qname,value=data))
+pelTS=merge(pelTS,melt(transmute(rfpts,sid=sid,SB=MSYBtrigger,F=FMSY)),by=c("sid","variable"),all.x=TRUE)
+
+names(pelTS)=gsub("\\.x","",     names(pelTS))
+names(pelTS)=gsub("\\.y",".rfpt",names(pelTS))
+pelTS[is.na(pelTS$value.rfpt),"value.rfpt"]=1
+
+p3=ggplot(pelTS)+
+  geom_line(aes(year,value/value.rfpt,col=Source))+
+  facet_grid(variable~sid,scale="free")+
+  theme(legend.position="bottom")
+
+p3
+```
+
+# (ii) Update to current year
+
+```{r update}
+updt = merge(pelTS, ldply(stks, function(x) unlist(dims(x)["maxyear"]), .id = "sid"))
+updt = subset(updt, year >= maxyear & Source == "SAG")
+
+ctc = dlply(subset(updt, variable == "C"), .(sid), with, {
+  as.FLQuant(data.frame(data = value, year = year))
+})
+rec = dlply(subset(updt, variable == "Rec"), .(sid), with, {
+  window(as.FLQuant(data.frame(data = value, year = year)), end = 2027)
+})
+rec = llply(rec, function(x) { x[is.na(x)] = median(x[!is.na(x)]); x })
+
+# Stock-specific prep before the shared advice bridge.
+id = "boc.27.6-8"
+stks[[id]] = FLasher::fwd(
+  fwdWindow(stks[[id]], end = 2027),
+  sr = rec[[id]],
+  catch = ctc[[id]][, ac(2023:2024)])
+
+id = "mac.27.nea"
+stks[[id]] = window(stks[[id]], end = 2024)
+
+# Catch years to bridge each stock from assessment maxyear through advice.
+bridge = list(
+  "boc.27.6-8"                = 2025:2026,
+  "hom.27.2a3a4a5b6a7a-ce-k8" = 2025:2026,
+  "mac.27.nea"                = 2024:2025,
+  "whb.27.1-91214"            = 2025:2026
+)
+# Trim after bridge so fwdWindow leftovers (NA stock.n) are not carried into
+# long-term forecasts. Mac’s last advice catch year is 2025.
+endYr = c(
+  "boc.27.6-8"                = 2026,
+  "hom.27.2a3a4a5b6a7a-ce-k8" = 2026,
+  "mac.27.nea"                = 2025,
+  "whb.27.1-91214"            = 2026
+)
+
+for (id in names(bridge)) {
+  x = FLasher::fwd(
+    fwdWindow(stks[[id]], end = 2027),
+    sr = rec[[id]],
+    catch = advice[[id]][, ac(bridge[[id]])]
+  )
+  x = window(x, end = endYr[[id]])
+  stks[[id]] = x
+}
+
+stks = FLStocks(stks)
+for (id in names(stks)) name(stks[[id]]) = id
+```
+
+
+## Equilibrium and regimes (inputs to TAC scenarios)
+
+`calcEq` per stock, regime detection on stock--recruit residuals, and `recCurrent` for the Regime TAC row. **Result:** `pel-om.RData` and `ggPelRecResidual`.
+
+```{r equilibrium}
+list2env(
+  calcEqAndRegimes(stks = stks, sid = sids$sid, rfpts = rfpts),
+  envir = environment())
+save(stks, eqs, srs, rds, ts, rfpts, advice, recCurrent, recRegime,
+     file = file.path(dirOM, "pel-om.RData"))
+```
+
+```{r recruitment-residuals, fig.height=10, fig.width=14}
+ggPelRecResidual = plotRecResiduals(srs, rds)
+print(ggPelRecResidual)
+```
+
+**Figure `r iFig=iFig+1; iFig`** Pelagic recruitment residuals (fitted stock--recruitment deviations); shaded polygons indicate regime segments.
+
+# (iii) Simulate future TACs
+
+Short-term catch scenarios via `simTAC()` / `saveSimTacResults()` (`fcstCtrl` + FLasher). **Result:** `pel-fct.RData`, `csv/pel-f.csv`, scenario `FLStock` lists.
+
+```{r forecasts}
+# Use in-memory objects from equilibrium (do not reload pel-om.RData —
+# that file may be stale relative to this knit). For an interactive restart,
+# load(file.path(dirOM, "pel-om.RData")) before running this chunk.
+assertAfterEquilibrium()
+
+list2env(
+  simTAC(
+    stks       = stks,
+    sid        = sids$sid,
+    eqs        = eqs,
+    srs        = srs,
+    recCurrent = recCurrent,
+    rfpts      = rfpts),
+  envir = environment())
+
+list2env(
+  saveSimTacResults(
+    fcstStks  = fcstStks,
+    rfpts     = rfpts,
+    ctcAdvice = advice,
+    dirTAC    = dirTAC,
+    prefix    = "pel"),
+  envir = environment())
+
+list2env(unpackFcstScenarios(fcstStks), envir = environment())
+```
+
+**Figure `r iFig=iFig+1; iFig`** Pelagic forecasts: projected catch under status quo F, Fmsy, and regime recruitment scenarios.
+
+```{r forecast-catch-build}
+historical = FLStocks(stks)
+ggPelForecast = plotForecastCatch(fct)
+print(ggPelForecast)
+```
+
+```{r forecast-save-stks, eval=FALSE, include=FALSE}
+pelFcstStks = c(fcstStks, list(Historical = historical))
+save(pelFcstStks, file = file.path(dirOM, "pel-fcst-stks.RData"))
+```
+
+### Optional time-series and projection panels
+
+```{r, eval=FALSE, time-series-strips, fig.height=4, fig.width=14}
+tsPlots = buildOptionalTsStrips(stks, eqs, rfpts)
+ggPelTsSsb   = tsPlots$ssb
+ggPelTsF     = tsPlots$f
+ggPelTsCatch = tsPlots$catch
+ggarrange(plotlist = ggPelTsSsb,   ncol = 2)
+ggarrange(plotlist = ggPelTsF,     ncol = 2)
+ggarrange(plotlist = ggPelTsCatch, ncol = 2)
+```
+
+```{r, eval=FALSE, stock-plots, fig.height=12}
+plotOptionalProjections(fsq, historical, fmsy, rgm, eqs)
+```
+
+## Bundled plot objects
+
+```{r, eval=FALSE, save-plot-objects-pelagics, include=FALSE}
+saveGroupPlotBundle(
+  prefix = "pel",
+  recResiduals = ggPelRecResidual,
+  forecastCatch = ggPelForecast,
+  timeSeries = list(ssb = ggPelTsSsb, f = ggPelTsF, catch = ggPelTsCatch),
+  dirOM = dirOM,
+  dirPlot = dirPlot)
+```
+
+## Summary
+
+Pelagic workflow produces harmonized assessments, regime-aware recruitment diagnostics, multi-scenario short-term catch paths, SAG/advice diagnostic figures, and CSV export **`data/TAC/csv/pel-f.csv`**. Interpretation, methods narrative, and cross-stock conclusions are developed in `report/00_report.Rmd`.
+

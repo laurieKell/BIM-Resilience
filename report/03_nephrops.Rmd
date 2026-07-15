@@ -1,0 +1,516 @@
+---
+title: "Nephrops functional units:  TAC simulations"
+subtitle: "Read in stocks, updates, and simulates advice"
+author: "Laurence T. Kell"
+date: "`r Sys.Date()`"
+# Knit → HTML under report/html/. For PDF/Word see report/knit_to_report.R
+# (knit_to_report(..., format = "pdf"|"docx") or render_report(...)).
+knit: (function(inputFile, encoding) { e <- new.env(); sys.source(file.path(dirname(normalizePath(inputFile)), "knit_to_report.R"), envir = e, keep.source = FALSE); e$knit_to_report(inputFile, encoding) })
+output:
+  html_document:
+    self_contained: false
+    lib_dir: "html/libs/03_nephrops"
+    toc: true
+    toc_float: true
+    code_folding: show
+  pdf_document:
+    toc: true
+    number_sections: true
+    fig_caption: true
+  word_document:
+    toc: true
+---
+
+# Purpose {#purpose}
+
+This report runs the **Nephrops** workflow in three stages: **(i)** get chosen stocks (SAG / functional units), **(ii)** update to the current year (JABBA / biodyn conditioning), **(iii)** simulate future TACs. Methods and synthesis belong in `report/00_report.Rmd`.
+
+**Typical outputs:** `data/om/neph-sag.RData`, `data/om/neph-jabba.RData`, `data/om/neph-bds.RData`, `data/TAC/neph-fct.RData`, `data/TAC/csv/neph-f.csv`.
+
+---
+
+# Introduction
+
+Functional-unit time series are aligned with ICES SAG-style inputs; surplus-production/biodyn-style OMs support JABBA fitting and TAC scenarios. The three stages below match the pelagic/demersal reports; interpretive discussion belongs in `00_report.Rmd`.
+
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(warning = FALSE, message = FALSE)
+options(warn = -1)
+```
+
+```{r paths}
+# Change once if the project moves; package code lives in R/.
+projectRoot = "C:/active/Resilience"
+source(file.path(projectRoot, "report/ensureBimResilience.R"))
+ensureBimResilience(projectRoot)
+list2env(resiliencePaths(projectRoot), envir = environment())
+```
+
+```{r libraries}
+loadReportLibraries(extra = c(
+  "mpb", "JABBA", "scales", "foreach", "doParallel", "parallel", "forecast"))
+iFig = 0
+```
+
+
+# (i) Get chosen stocks
+
+SAG series and reference points for Nephrops functional units in `sid`. **Result:** `nep`, `jabbaInp`, `rfpts`, wide `neph`.
+
+```{r sag}
+list2env(
+  loadSagBundle(
+    projectRoot = projectRoot,
+    fishery = "Nephrops",
+    sagYears = 2025,
+    sdgYear = 2025,
+    includeTB = TRUE,
+    dropAssYearRows = TRUE,
+    requireCatches = FALSE),
+  envir = environment())
+
+neph = subset(ts, !is.na(SB))
+ctc2026 = read.csv(adviceCsv)
+save(neph, rfpts, advice, file = file.path(dirOM, "neph-sag.RData"))
+```
+
+```{r data-loading}
+nephPlotData = subset(merge(neph, rfpts, by = "sid"),
+                      !is.na(year) & year >= 2000 & year <= 2025)
+nephStockPlotData = subset(nephPlotData, !is.na(SB) & SB >= 0)
+nephCatchPlotData = subset(nephPlotData, !is.na(C) | !is.na(landings))
+nephFishingPressurePlotData = subset(nephPlotData, !is.na(F) & !is.na(FMSY) & FMSY != 0)
+nephFishingPressurePlotData$FRel =
+  nephFishingPressurePlotData$F / nephFishingPressurePlotData$FMSY
+nephFishingPressurePlotData = subset(
+  nephFishingPressurePlotData, !is.na(FRel) & FRel >= 0)
+
+# Shared facet time-series styling used by SAG and JABBA panels below.
+nepTs = function(p, ylab, title, free = "free_y", ylim = c(0, NA), hline = NULL) {
+  p = p +
+    scale_x_continuous(limits = c(2000, 2025), breaks = c(2000, 2010, 2020)) +
+    scale_y_continuous(limits = ylim) +
+    theme_minimal(12) +
+    labs(x = "Year", y = ylab, title = title) +
+    facet_wrap(~sid, scale = free, ncol = 3)
+  if (!is.null(hline))
+    p = p + geom_hline(yintercept = hline, col = "red", linetype = "dashed")
+  p
+}
+```
+
+```{r neph-stock-ts, fig.height=8, fig.width=12}
+ggNepStockTs = nepTs(
+  ggplot(nephStockPlotData) +
+    geom_path(aes(year, SB)) +
+    geom_hline(
+      aes(yintercept = MSYBtrigger),
+      data = subset(nephStockPlotData, !is.na(MSYBtrigger)),
+      col = "red", linetype = "dashed"),
+  ylab = "Stock",
+  title = expression("Stock relative to MSY" ~ italic(B[trigger])),
+  free = "free")
+ggNepStockTs
+```
+
+**Figure `r iFig=iFig+1; iFig`**: Stock biomass time series for Nephrops functional units from ICES assessment data.
+
+```{r neph-catch-ts, fig.height=8, fig.width=12}
+ggNepCatch = nepTs(
+  ggplot(nephCatchPlotData) +
+    geom_path(aes(year, C),
+              data = subset(nephCatchPlotData, !is.na(C) & C >= 0),
+              col = "blue") +
+    geom_path(aes(year, landings),
+              data = subset(nephCatchPlotData, !is.na(landings) & landings >= 0),
+              col = "darkgreen"),
+  ylab = "Landings",
+  title = "Catch and Landings")
+ggNepCatch
+```
+
+**Figure `r iFig=iFig+1; iFig`**: Catch and landings time series for Nephrops functional units.
+
+```{r neph-fishing-pressure-ts, fig.height=8, fig.width=12}
+ggNepFishingPressureTs = nepTs(
+  ggplot(nephFishingPressurePlotData) +
+    geom_path(aes(year, FRel), col = "blue"),
+  ylab = "F",
+  title = "Fishing Pressure",
+  hline = 1)
+ggNepFishingPressureTs
+```
+
+**Figure `r iFig=iFig+1; iFig`**: Fishing pressure indices for Nephrops functional units.
+
+```{r neph-mean-size-ts, fig.height=8, fig.width=12,eval=FALSE}
+#' Plot Mean Size Over Time
+#' 
+#' @param data Stock data
+#' @param ncol Number of columns for faceting (default: 3)
+#' @return ggplot object
+#' @export
+plotMeanSize = function(data, ncol = 3) {
+  # Determine which column to use for faceting (sid or .id)
+  facet_col = if ("sid" %in% names(data)) "sid" else ".id"
+  
+  p = ggplot(data) +
+    geom_point(aes(year, C/(SB*F)), col = "blue") +
+    theme_minimal(12) +
+    labs(x = "Year",
+         y = "F",
+         title = "Mean Size")
+  
+  # Add faceting with appropriate column
+  if (facet_col == "sid") {
+    p = p + facet_wrap(~sid, scale = "free_y", ncol = ncol)
+  } else {
+    p = p + facet_wrap(~.id, scale = "free_y", ncol = ncol)
+  }
+  
+  return(p)
+}
+
+
+# Plot mean size
+ggNepMeanSizeTs = plotMeanSize(nep, ncol = 3)+
+    scale_y_continuous(limits=c(0,NA))
+print(ggNepMeanSizeTs)
+```
+
+**Figure `r iFig=iFig+1; iFig`**: Mean size time series for Nephrops functional units. Each panel shows the average size of individuals over time for individual functional units. 
+
+# (ii) Update to current year
+
+JABBA fits and biodyn OMs conditioned through the reporting year (advice bridge where needed).
+
+```{r neph-jabba}
+# r:     intrinsic growth rate
+# shape: production function shape (fixed)
+# psi:   initial depletion (B1/K)
+# k:     carrying capacity
+# sigma: process error 
+# tau:   observation error
+
+fillYr <- function(df, yrCol = "year", xCol = "catch") {
+  stopifnot(all(c(yrCol, xCol) %in% names(df)))
+  
+  df=df[order(df[[yrCol]]), ]
+  fullYrs=data.frame(year = seq(min(df[[yrCol]], na.rm = TRUE),
+                                   max(df[[yrCol]], na.rm = TRUE),
+                                   by = 1))
+  
+  df2=merge(fullYrs, df, by.x = "year", by.y = yrCol, all.x = TRUE)
+  df2=df2[order(df2$year), ]
+  
+  x=df2[[xCol]]
+  
+  for (i in which(is.na(x))) {
+    left=if (i > 1) max(which(!is.na(x[1:(i - 1)])), na.rm = TRUE) else NA_integer_
+    right=if (i < length(x)) {
+      w=which(!is.na(x[(i + 1):length(x)]))
+      if (length(w)) min(w) + i else NA_integer_
+    } else NA_integer_
+    
+    if (is.finite(left) && is.finite(right)) {
+      x[i]=mean(c(x[left], x[right]))
+    }
+  }
+  
+  df2[[xCol]]=x
+  df2}
+
+inp=transmute(neph,sid  =sid,
+                   year =year,
+                   catch=ifelse(is.na(C),landings+discards, C),
+                   index=SB)
+inp=merge(inp,rfpts)
+
+ncore=detectCores() - 4  
+cl=makeCluster(ncore)
+registerDoParallel(cl)
+
+jbNep=foreach(id=sids$sid, .combine=list, 
+                .maxcombine=length(rfpts$sid), 
+                .packages  =c("dplyr","JABBA","FLBRP","mpb","reshape","FLRebuild","plyr","zoo")) %dopar% {
+
+          dat  =fillYr(subset(inp,sid==id&year<2025))
+
+          pr   =FLPar(c(r=0.4,shape=0.4,psi=0.8,current=tail(dat$index,1)/dat$MSYBtrigger[1]*0.6))
+          
+          if(is.na(pr["current"])) pr["current"]=0.6
+
+          pr.sd=pr/pr*0.3
+
+
+          catch=dat[,c("year","catch")]
+
+          Index=dat[,c("year","index")]
+          #auxiliary=dat[,c("year","ffmsy")]
+
+          
+          rtn=tryIt(FLRebuild::jabba(catch, pr, pr.sd=pr.sd, assessment=id, 
+                                      fixed.obsE=0.3,index=Index, current="b"))
+          
+          rtn[["biodyn"]] = tryIt(mpb:::jabba2biodyn(rtn[[2]]))
+          
+          rtn}
+
+stopCluster(cl)
+
+id=9
+plot(jbNep[[id]][[3]])+
+   geom_flpar(data=FLPars(Stock  =FLPar("Bmsy"=refpts(jbNep[[id]][[3]])["bmsy",drop=T]),
+                          Harvest=FLPar("Fmsy"=refpts(jbNep[[id]][[3]])["fmsy",drop=T]),
+                          Yield  =FLPar("MSY" =refpts(jbNep[[id]][[3]])[ "msy",drop=T])),
+              x=dims(jbNep[[id]][[3]])$minyear+1)
+
+names(jbNep)=sids$sid
+
+save(jbNep,file=file.path(dirOM, "neph-jabba.RData"))
+```
+
+```{r neph-jabba-stock-ts, fig.height=8, fig.width=12}
+jbN = ldply(jbNep, function(x) {
+  if (is.null(x)) return(NULL)
+  tryIt(model.frame(
+    FLQuants(
+      x[[3]],
+      Stock   = function(x) stock(x)   %/% refpts(x)["bmsy"],
+      Harvest = function(x) harvest(x) %/% refpts(x)["fmsy"],
+      Yield   = function(x) catch(x)   %/% refpts(x)["msy"]
+    ),
+    drop = TRUE))
+}, .id = "sid")
+
+ggNepJabbaStockTs = nepTs(
+  ggplot(jbN) + geom_path(aes(year, Stock)),
+  ylab = "Stock",
+  title = expression("Stock relative to MSY" ~ italic(B[trigger])),
+  free = "free",
+  hline = 1)
+ggNepJabbaStockTs
+```
+
+**Figure `r iFig=iFig+1; iFig`**: JABBA stock biomass relative to BMSY by functional unit.
+
+```{r neph-jabba-yield-ts, fig.height=8, fig.width=12}
+ggNepJabbaYieldTs = nepTs(
+  ggplot(jbN) + geom_path(aes(year, Yield), col = "blue"),
+  ylab = "Yield / MSY",
+  title = "Catch relative to MSY",
+  hline = 1)
+ggNepJabbaYieldTs
+```
+
+**Figure `r iFig=iFig+1; iFig`**: JABBA yield relative to MSY by functional unit.
+
+```{r neph-jabba-harvest-ts, fig.height=8, fig.width=12}
+ggNepJabbaHarvestTs = nepTs(
+  ggplot(jbN) + geom_path(aes(year, Harvest), col = "blue"),
+  ylab = "F",
+  title = "Fishing Pressure",
+  hline = 1)
+ggNepJabbaHarvestTs
+```
+
+**Figure `r iFig=iFig+1; iFig`**: JABBA fishing pressure relative to FMSY by functional unit.
+
+```{r neph-process-error-ts}
+toProcessErrorSeries <- function(y) {
+  data.frame(
+    year = as.numeric(dimnames(y[["timeseries"]])[[1]]),
+    pe = as.numeric(y[["timeseries"]][,"mu","procB"]))}
+
+jbPE=ldply(jbNep, function(x) toProcessErrorSeries(x[["fit"]]),.id="sid")
+rds=ddply(jbPE, .(sid), with, rod(as.FLQuant(data.frame(year=year,data=pe))), .id = "sid")
+
+recRegime=ddply(rds, .(sid, regime), with, 
+                data.frame(data=exp(mean(data))), .id="sid")
+
+# Get current (most recent) regime
+recCurrent=ddply(recRegime, .(sid), with, 
+                 data.frame(regime=tail(data, 1)))
+
+save(jbN, jbPE, rds, recRegime, recCurrent, file = file.path(dirOM, "neph-jabba-outputs.RData"))
+
+ggNepProcResiduals=ggplot(jbPE)+
+  facet_wrap(~sid,scale="free",ncol=2)+
+  geom_polygon(aes(year,data,group=regime),
+               fill="lavender",col="blue",
+               lwd=.25,alpha=.5,
+               data=rds)+
+  geom_line( aes(year,pe),col="grey75")+
+  geom_point(aes(year,pe),col="grey75",fill="grey25",shape=21)+
+  xlab("Year")+ylab("Residual")+
+  theme_bw(16)+
+  theme(axis.text.x=element_text(angle=-30),legend.position="bottom")
+
+ggNepProcErrorTs = nepTs(
+  ggplot(jbPE) + geom_path(aes(year, pe), col = "blue"),
+  ylab = "",
+  title = "Process Error",
+  ylim = c(NA, NA),
+  hline = 0)
+ggNepProcResiduals
+ggNepProcErrorTs
+```
+
+```{r neph-om}
+## last catch year, if < 2026 then provide advice
+
+bds=llply(jbNep,function(x) x[["biodyn"]])
+flag=!laply(bds,is.null)
+bds=mpb:::biodyns(bds[flag])
+
+
+ctcAdvice=melt(read.csv(adviceCsv, stringsAsFactors=FALSE))
+ctcAdvice=ctcAdvice[ctcAdvice$sid%in%names(jbNep),]
+ctcAdvice=transmute(ctcAdvice,sid=sid,data=value,year=substr(variable,2,5))
+ctcAdvice=FLQuants(dlply(ctcAdvice,.(sid), with, as.FLQuant(data.frame(year=year,data=data))))
+ctcAdvice=ctcAdvice[names(bds)]
+
+bds=buildNephOps(bds,
+                 advice           = ctcAdvice,
+                 sqYears          = 2022:2024, #3
+                 projectionYears  = 2027:2040,
+                 processErrorSd   = 0.15,
+                 processErrorB    = 0.3)
+
+save(bds, file = file.path(dirOM, "neph-bds.RData"))
+
+# plot(mcf(FLQuants(bd,Catch=function(x) catch(x),
+#                       Stock=function(x) stock(x),
+#                       "Harvest~Rate"=function(x) harvest(x))), iter=5)+
+#     scale_y_continuous(limits=c(0,NA))+
+#   xlab("Year") + ggtitle("Single Stock: nep.fu.11")
+```
+
+# (iii) Simulate future TACs
+
+Scenario catch trajectories and standard TAC CSV (`neph-f.csv`).
+
+```{r neph-fct}
+fct=ldply(bds, function(x) ldply(x, function(y) 
+  model.frame(FLQuants(y, Catch=FLCore::catch,Stock=stock,F=harvest),drop=TRUE),.id="Scenario"),.id="sid")
+
+save(fct, file = file.path(dirTAC, "neph-fct.RData"))
+
+# Harmonised forecast CSV (same schema as pel-f.csv / dem-f.csv / iccat-f.csv).
+tacCsvDir = file.path(dirTAC, "csv")
+if (!dir.exists(tacCsvDir)) dir.create(tacCsvDir, recursive = TRUE, showWarnings = FALSE)
+tacNephF = buildForecastTacCsv(
+  fct = fct,
+  triggerBySid = subset(rfpts, sid %in% unique(as.character(fct$sid)))[, c("sid", "MSYBtrigger")],
+  triggerCol = "MSYBtrigger",
+  minYear = 2021
+)
+write.csv(tacNephF, file = file.path(tacCsvDir, "neph-f.csv"), row.names = FALSE)
+```
+
+
+```{r plot-nephrops, fig.width=12, fig.height=8}
+ids=names(bds)
+if (length(ids) == 0) stop("No Nephrops operating models available in bds.")
+
+ctc=FLQuants(lapply(ids, function(id) {
+  bd=bds[[id]][[1]]
+  catch(bd) / refpts(bd)["msy"]
+}))
+names(ctc)=ids
+
+ggNepForecastCatch=plot(ctc)+
+    geom_hline(aes(yintercept=1),col="grey")+
+    facet_wrap(~qname,scale="free_y",ncol=4)+
+    scale_y_continuous(limits=c(0,NA))+
+    #geom_text(aes(x=1950, y=2, label=names(cat1[qname])), 
+    #        hjust=0, vjust=1, size=3, color="black")+
+    labs(title="Cat 1: Catch & SSB",   
+         x    ="Year",
+         y    =expression(Catch/MY)) +
+  theme_minimal(base_size = 12) +
+  theme(
+    legend.position = "bottom",
+    legend.title = element_blank(),
+    #strip.text = element_blank(),
+    axis.text = element_blank(),
+    axis.ticks = element_blank(),
+    panel.grid.minor = element_blank(),
+    panel.grid.major = element_line(color = "grey90"),
+    plot.title = element_text(face = "bold", size = 14),
+    plot.subtitle = element_text(size = 12, color = "grey30"),
+    panel.spacing = unit(0, "lines"))
+
+ggNepForecastCatch
+```
+
+**Figure `r iFig=iFig+1; iFig`**: Catch relative to MSY for all Nephrops functional units. Values above 1 indicate catch exceeding MSY reference levels. Each panel shows a different functional unit.
+
+
+```{r devs}
+df=subset(neph ,sid=="nep.fu.22")
+
+# Fit ARIMA(1,1,0) with drift
+fit=auto.arima(df$landings)
+
+# Simulate 100 series of length nyears
+set.seed(123)
+sims=replicate(100, simulate(fit, nsim = nrow(df)))
+
+sims=as.FLQuant(c(sims),dimnames=list(year=2023:2047,iter=seq(100)))
+```
+
+
+```{r tac-nephrops}
+ids=names(bds)
+if (length(ids) == 0) stop("No Nephrops operating models available in bds.")
+
+TACNephrops=ldply(bds, function(x) transmute(as.data.frame(catch(x[[1]])),
+                                        iter = iter, year = year, TAC = data))
+write.csv(
+  subset(TACNephrops, year >= 2021 & year < 2041),
+  file = file.path(dirTAC, "csv", "neph-tac-sq.csv"),
+  row.names = FALSE)
+```
+
+```{r save-nephrops-plot-objects, include=FALSE}
+dir.create(dirOM, recursive = TRUE, showWarnings = FALSE)
+dir.create(dirPlot, recursive = TRUE, showWarnings = FALSE)
+
+nephPlots = list(
+  check = list(
+    catch = ggNepCatch,
+    ssb = ggNepStockTs,
+    f = ggNepFishingPressureTs
+  ),
+  cfCatch = ggNepCatch,
+  recResiduals = ggNepProcResiduals,
+  forecastCatch = ggNepForecastCatch
+)
+save(nephPlots, file = file.path(dirOM, "neph_plot.RData"))
+
+ggPlots03Nephrops = list(
+  stockTs = ggNepStockTs,
+  catchLandingsTs = ggNepCatch,
+  fishingPressureTs = ggNepFishingPressureTs,
+  jabbaStockTs = ggNepJabbaStockTs,
+  jabbaYieldTs = ggNepJabbaYieldTs,
+  jabbaHarvestTs = ggNepJabbaHarvestTs,
+  procResiduals = ggNepProcResiduals,
+  procErrorTs = ggNepProcErrorTs
+)
+
+save(ggPlots03Nephrops, file = file.path(dirPlot, "neph_plot_html.RData"))
+```
+
+# Summary of results {#summary-of-results}
+
+This workflow yields per-functional-unit diagnostics, JABBA/biodyn panels, and TAC paths. Key artefacts: **`data/om/neph-jabba.RData`**, **`neph-jabba-outputs.RData`**, **`neph-bds.RData`**, **`neph_plot.RData`**, **`data/TAC/csv/neph-f.csv`**, **`neph-tac-sq.csv`**. Synthesis belongs in `report/00_report.Rmd`.
+
+Cross-unit interpretation, advice policy discussion, and climate or mixed-fishery context should be developed in the synthesis report rather than duplicated here.
+
+## References
+
+

@@ -1,0 +1,10 @@
+^.*\.Rproj$
+^\.Rproj\.user$
+^\.gitignore$
+^\.Rhistory$
+^\.RData$
+^data$
+^data-raw$
+^report$
+^Resilience\.Rproj$
+^LICENSE\.md$

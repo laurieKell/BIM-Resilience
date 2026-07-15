@@ -1,0 +1,249 @@
+---
+title: "North Atlantic albacore (ICCAT): analysis and results"
+subtitle: "SS3 stock-only workflow (parallel to ICES pelagic pipeline in `01_pelagics.Rmd`)"
+author: "Laurence T. Kell"
+date: "`r Sys.Date()`"
+# Knit → HTML under report/html/. For PDF/Word see report/knit_to_report.R
+# (knit_to_report(..., format = "pdf"|"docx") or render_report(...)).
+knit: (function(inputFile, encoding) { e <- new.env(); sys.source(file.path(dirname(normalizePath(inputFile)), "knit_to_report.R"), envir = e, keep.source = FALSE); e$knit_to_report(inputFile, encoding) })
+output:
+  html_document:
+    self_contained: false
+    lib_dir: "html/libs/04_iccat"
+    toc: true
+    toc_float: true
+    code_folding: show
+  pdf_document:
+    toc: true
+    number_sections: true
+    fig_caption: true
+  word_document:
+    toc: true
+---
+
+# Purpose
+
+This report runs the **ICCAT albacore** workflow in three stages: **(i)** get the chosen stock (`alb-n`), **(ii)** update with advice catches, **(iii)** simulate future TACs. Methods and multi-stock discussion belong in `report/00_report.Rmd`.
+
+**Outputs:** **`alb_plot.RData`**, **`iccat-fct.RData`**, **`csv/iccat-f.csv`**.
+
+---
+
+
+```{r}
+knitr::opts_chunk$set(warning = FALSE, 
+                      message = FALSE)
+
+options(warn=-1) 
+```
+
+```{r paths}
+# Change once if the project moves; package code lives in R/.
+projectRoot = "C:/active/Resilience"
+source(file.path(projectRoot, "report/ensureBimResilience.R"))
+ensureBimResilience(projectRoot)
+list2env(resiliencePaths(projectRoot), envir = environment())
+```
+
+
+```{r libraries}
+loadReportLibraries(extra = "ggpubr")
+iFig = 0
+```
+
+# (i) Get chosen stocks
+
+Starting albacore OM comes from the packaged snapshot (`loadShippedStocks("iccat")`).
+Rebuild from local SS3 only when the ICCAT assessment changes, then run
+`source("data-raw/ship_stocks.R")` to refresh `inst/extdata/`.
+
+```{r data}
+sids = subset(bimSids(), fishery == "ICCAT")
+sid = sids$sid
+
+# Set TRUE to rebuild from local SS3 (needs data/inputs/SS/alb-n/), then re-ship.
+rebuildAlbOm = FALSE
+
+if (isTRUE(rebuildAlbOm)) {
+  alb = readSS3(file.path(dirSS, "alb-n"))
+} else {
+  alb = loadShippedStocks("iccat")
+}
+
+stks = FLStocks("alb-n" = alb$FLStock)
+sr = alb$SRR
+rfs = alb$refpts
+
+maxYr = ldply(stks, function(x) data.frame(maxyear = dims(x)[["maxyear"]]), .id = "sid")
+ts = ldply(stks, function(x)
+  model.frame(FLQuants(x, Catch    = FLCore::catch,
+                          SSB      = FLCore::ssb,
+                          F        = FLCore::fbar,
+                          Recruits = FLCore::rec), drop = TRUE))
+names(ts)[1] = "sid"
+ts = merge(ts, maxYr)
+```
+
+# (ii) Update to current year
+
+Advice catches from `advice.csv` bridge the assessment into the projection window.
+
+```{r, advice}
+adviceFile = if (file.exists(adviceCsv)) adviceCsv else shippedAdvicePath(projectRoot)
+advice = melt(read.csv(adviceFile, stringsAsFactors = FALSE))
+advice = advice[advice$sid %in% sid, ]
+advice = transmute(advice, sid = sid, data = value, year = substr(variable, 2, 5))
+advice = FLQuants(dlply(advice, .(sid), with, as.FLQuant(data.frame(year = year, data = data))))
+```
+
+## Stock--recruit fit and recruitment residuals
+
+**Done:** Fit Beverton--Holt SRR on the accepted assessment series; plot residuals for regime-style interpretation in synthesis. **Result:** `ggAlbRecResidual`.
+
+```{r equilibrium-and-residuals, fig.height=6, fig.width=10}
+eq=FLBRP(stks[[sid]])
+sr=fmle(as.FLSR(stks[[sid]], model="bevholt"), control=list(silent=TRUE))
+
+model(eq) =bevholt()$model
+params(eq)=params(sr)
+
+srdf=model.frame(FLQuants(sr,hat=predict,
+                            rec=FLCore::rec,
+                            rsd=residuals),drop=TRUE)
+
+ggAlbRecResidual=ggplot(cbind(sid="alb-n",srdf))+
+  facet_wrap(~sid, scale="free", ncol=1)+
+  geom_line(aes(year, rsd), col="grey75")+
+  geom_point(aes(year, rsd), col="grey75", fill="grey25", shape=21)+
+  xlab("Year")+ylab("Residual")+
+  theme_bw(12)
+print(ggAlbRecResidual)
+```
+
+## Assessment time-series panels
+
+Catch, SSB, F, and recruitment with SS3 MSY-class reference lines. **Result:** four-panel `ggarrange` and separate ggplot objects saved below.
+
+```{r check, fig.height=8, fig.width=12, results='hide'}
+theme_set(theme_minimal()+
+            theme(axis.title.y=element_blank(),
+                  axis.text.y=element_blank(),
+                  axis.ticks.y=element_blank(),
+                  axis.line.y=element_blank()))
+
+ggAlbCatch=ggplot(ts)+
+  facet_grid(sid~., scale="free_y")+
+  geom_line(aes(year, Catch))+
+  geom_hline(yintercept=as.numeric(rfs["MSY", drop=TRUE]),inherit.aes=FALSE)+
+  labs(title="Catch")+xlab("Year")
+
+ggAlbSsb=ggplot(ts)+
+  facet_grid(sid~., scale="free_y")+
+  geom_line(aes(year, SSB))+
+  geom_hline(yintercept=as.numeric(rfs["SBMSY", drop=TRUE]),inherit.aes=FALSE)+
+  labs(title="SSB")+xlab("Year")
+
+ggAlbF=ggplot(ts)+
+  facet_grid(sid~., scale="free_y")+
+  geom_line(aes(year, F))+
+  geom_hline(yintercept=as.numeric(rfs["FMSY", drop=TRUE]),inherit.aes=FALSE)+
+  labs(title="F")+xlab("Year")
+
+ggAlbRecruits=ggplot(ts)+
+  facet_grid(sid~., scale="free_y")+
+  geom_line(aes(year, Recruits))+
+  geom_hline(yintercept=as.numeric(rfs["R0", drop=TRUE])*2,inherit.aes=FALSE)+
+  labs(title="Recruits")+xlab("Year")
+
+ggarrange(ggAlbCatch, ggAlbSsb, ggAlbF, ggAlbRecruits)
+```
+
+
+# (iii) Simulate future TACs
+
+Forward projections under recruitment multipliers; writes `iccat-fct.RData` and `csv/iccat-f.csv`.
+
+**Done:** Hold recent F forward; compare deterministic paths for **FStatus Quo**, **FStatus Quo 75%**, and **FStatus Quo 50%** (recruitment scaling). **Result:** `fct` + `refPars` in `iccat-fct.RData`, `ggAlbFwdRecMult`.
+
+```{r forecasts, fig.height=8, fig.width=12}
+theme_set(theme_minimal()+
+            theme(axis.title.y=element_blank(),
+                  axis.text.y=element_blank(),
+                  axis.ticks.y=element_blank(),
+                  axis.line.y=element_blank()))
+
+ftar  =mean(fbar(stks[[sid]])[,ac(dims(stks[[sid]])$maxyear-3:1)])
+yrs   =ac(2027:2050)
+recDev=FLQuant(1.0,dimnames=list(year=yrs))
+ctrl  =fwdControl(year=as.numeric(yrs),
+                  quant="f",
+                  value=rep(ftar, length(yrs)))
+
+stk=fwdWindow(stks[[sid]], end=max(an(yrs)))
+
+stk=FLasher::fwd(stk,catch=advice[["alb-n"]][,ac(2022:2026)],sr=sr,deviances=recDev)
+
+alb=FLStocks("FStatus Quo"       =FLasher::fwd(stk,control=ctrl,sr=sr,deviances=recDev),
+             "FStatus Quo 75%"   =FLasher::fwd(stk,control=ctrl,sr=sr,deviances=recDev*0.75),
+             "FStatus Quo 50%"   =FLasher::fwd(stk,control=ctrl,sr=sr,deviances=recDev*0.50))
+
+fct=cbind(sid="alb-n",ldply(alb,   function(x)
+    model.frame(FLQuants(x, Catch=FLCore::catch,SSB=ssb,F=fbar,Recruits=rec),drop=TRUE),.id="Scenario"))
+
+refPars=FLPars(
+  SB=FLPar("SBMSY"=rfs["SBMSY", drop=TRUE]),
+  F=FLPar("FMSY"=rfs["FMSY", drop=TRUE]),
+  Yield=FLPar("MSY"=rfs["MSY", drop=TRUE])
+)
+
+save(fct, refPars, file = file.path(dirTAC, "iccat-fct.RData"))
+
+tacCsvDir = file.path(dirTAC, "csv")
+if (!dir.exists(tacCsvDir)) dir.create(tacCsvDir, recursive = TRUE, showWarnings = FALSE)
+sb_msy = suppressWarnings(as.numeric(rfs["SBMSY", drop = TRUE]))
+sb_msy = sb_msy[is.finite(sb_msy)]
+if (!length(sb_msy)) {
+  stop("04_iccat: need finite SBMSY from SS3 reference points (rfs) to compute Btrig for csv/iccat-f.csv")
+}
+sb_msy = sb_msy[1]
+albTrig = data.frame(sid = "alb-n", MSYBtrigger = sb_msy, stringsAsFactors = FALSE)
+tacIccatF = buildForecastTacCsv(
+  fct = fct,
+  triggerBySid = albTrig,
+  triggerCol = "MSYBtrigger",
+  minYear = 2021
+)
+write.csv(tacIccatF, file = file.path(tacCsvDir, "iccat-f.csv"), row.names = FALSE)
+
+ggAlbFwdRecMult=plot(alb)+
+  geom_flpar(data=refPars, x=min(as.numeric(yrs)))
+
+print(ggAlbFwdRecMult)
+```
+
+```{r save-alb-plot-objects, include=FALSE}
+plotObjPath=file.path(dirOM, "alb_plot.RData")
+if (!dir.exists(dirname(plotObjPath))) dir.create(dirname(plotObjPath), recursive=TRUE, showWarnings=FALSE)
+albPlots=list(
+  check=list(catch=ggAlbCatch, ssb=ggAlbSsb, f=ggAlbF, recruits=ggAlbRecruits),
+  cfCatch=ggAlbCatch,
+  recResiduals=ggAlbRecResidual,
+  forecastCatch=ggAlbFwdRecMult)
+
+save(albPlots, file=plotObjPath)
+
+dir.create(file.path(dirReport, "figs"), recursive = TRUE, showWarnings = FALSE)
+ggPlots04Iccat = list(
+  recResiduals=ggAlbRecResidual,
+  checkCatch=ggAlbCatch,
+  checkSsb=ggAlbSsb,
+  checkF=ggAlbF,
+  checkRecruits=ggAlbRecruits,
+  forecastCatch=ggAlbFwdRecMult
+)
+save(ggPlots04Iccat, file=file.path(dirReport, "figs", "alb_plot_html.RData"))
+```
+
+## Summary
+
+Albacore workflow produces SS3-conditioned diagnostics, recruitment residual plot, recruitment-scaled forward projections, **`data/TAC/csv/iccat-f.csv`** (deterministic scenarios), and packaged ggplot lists for `00_report.Rmd`.

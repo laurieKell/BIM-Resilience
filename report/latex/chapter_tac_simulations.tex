@@ -1,0 +1,416 @@
+% =============================================================================
+% Standalone chapter / appendix: TAC simulations
+% -----------------------------------------------------------------------------
+% Intended use:
+%   - As an appendix (or chapter) in Resilience Report V8.0
+%   - Alone: compile tac_simulations_standalone.tex
+%
+% Figures are copies of knitr PNGs from report/html/*_files/figure-html/,
+% staged under report/latex/figs/. Refresh them (all in R) with:
+%   source("report/finalise/02_stage_figures.R"); stageFigures()
+% =============================================================================
+
+\chapter{Simulation of future TACs}
+\label{ch:tac-sim}
+
+\paragraph{Plain-language framing.}
+This appendix explores \emph{what catch and biomass paths might look like}
+if recent fishing pressure (or alternative $F_{\mathrm{MSY}}$ targets) were
+held forward under different recruitment or productivity assumptions. It is
+\textbf{not} an ICES or ICCAT advice product, and it does not recommend TACs
+for the coming year. The aim is to support the resilience narrative in the
+main report: how sensitive near-term catches and stock status are when
+productivity is poorer than the recent mean, or when the latest recruitment
+regime persists.
+
+Technically, the appendix summarises deterministic short- to medium-term Total
+Allowable Catch (TAC) simulations for the stocks retained in the BIM
+resilience analysis. Calculations live in the companion R Markdown workflows
+(\texttt{01\_pelagics.Rmd}, \texttt{02\_demersal.Rmd}, \texttt{03\_nephrops.Rmd},
+\texttt{04\_iccat.Rmd}). Here we document the shared scenario design, show the
+principal diagnostic and forecast figures, and point to the tabulated catch
+paths under \texttt{data/TAC/csv/}. Broader climate synthesis and
+cross-fishery conclusions belong in the parent report text.
+
+\paragraph{Key messages for non-modelling readers.}
+\begin{itemize}
+  \item Compare scenarios \emph{within} a stock first: the vertical gap between
+        lines is the effect of the assumption that changed.
+  \item Status-quo $F$ with lower recruitment asks: ``If we keep fishing as we
+        do now, and productivity worsens, what happens to catch and biomass?''
+  \item $F_{\mathrm{MSY}}$ paths ask the same productivity questions under a
+        different fishing intensity.
+  \item Regime paths ask: ``What if the current recruitment regime continues?''
+  \item Use $B/B_{\mathrm{trigger}}$ (in the CSVs) to judge status; absolute
+        catch scales differ widely between stocks.
+\end{itemize}
+
+% -----------------------------------------------------------------------------
+\section{Shared design}
+\label{sec:tac-design}
+
+\subsection{Workflow}
+\label{sec:tac-workflow}
+
+For each stock group the analysis follows three steps:
+
+\begin{enumerate}
+  \item \textbf{Assemble operating models (OMs)} from ICES Stock Assessment
+        Graphs (SAG) series, accepted assessment objects (SS3, SAM,
+        \texttt{icesdata}), and---for Nephrops---JABBA surplus-production fits.
+  \item \textbf{Bridge to the advice year} with agreed catch advice, so that
+        the projections start from a common near-term state rather than the
+        raw terminal assessment year.
+  \item \textbf{Project forward} under a fixed control table of fishing
+        mortality (or harvest) targets and recruitment / process-error
+        multipliers, then export catch and biomass trajectories to CSV.
+\end{enumerate}
+
+ICES age-structured stocks use \texttt{FLasher::fwd} with stock--recruit
+relationships fitted via Beverton--Holt equilibria (\texttt{calcEq}). Nephrops
+functional units use biodynamic OMs conditioned on JABBA, projected with
+\texttt{mpb::fwd}. North Atlantic albacore uses the ICCAT SS3 OM with the same
+status-quo $F$ target under scaled recruitment deviations.
+
+\subsection{Scenarios}
+\label{sec:tac-scenarios}
+
+Age-structured ICES stocks (pelagic and demersal) share one forecast control
+table. For each row, Table~\ref{tab:tac-scen} states what is held constant,
+what is changed, and the question the scenario is meant to answer.
+Status-quo $F$ is the mean of $\bar{F}$ over the last three assessment years.
+Age-structured projections (pelagic, demersal, albacore) run through 2050;
+the Nephrops harvest-rate projections run through 2041.
+
+\begin{table}[htbp]
+\centering
+\caption{Age-structured ICES TAC scenarios: constant controls, changed
+inputs, and intended question.}
+\label{tab:tac-scen}
+\small
+\begin{tabular}{@{}p{0.18\textwidth}p{0.24\textwidth}p{0.24\textwidth}p{0.28\textwidth}@{}}
+\toprule
+Scenario & Held constant & Changed & Question answered \\
+\midrule
+FStatus Quo
+  & Recent mean $F$; recent recruitment residual mean
+  & --- (reference path)
+  & What is the baseline catch/biomass path if recent fishing and recent
+    productivity continue? \\
+\addlinespace
+FStatus Quo 75\%
+  & Recent mean $F$
+  & Recruitment residual $\times 0.75$
+  & If fishing stays as now, how much do catch and status erode when
+    recruitment is moderately poorer? \\
+\addlinespace
+FStatus Quo 50\%
+  & Recent mean $F$
+  & Recruitment residual $\times 0.50$
+  & Same as above under a stronger productivity shock. \\
+\addlinespace
+FMSY
+  & $F_{\mathrm{MSY}}$; recent residual mean
+  & Fishing intensity set to $F_{\mathrm{MSY}}$ (vs status quo)
+  & Relative to status quo, does fishing at $F_{\mathrm{MSY}}$ improve or
+    worsen biomass under recent productivity? \\
+\addlinespace
+Regime
+  & $F_{\mathrm{MSY}}$
+  & Latest stock--recruit residual \emph{regime} replaces the short-window
+    residual mean
+  & If the current recruitment regime persists, how do $F_{\mathrm{MSY}}$
+    catch and biomass paths compare with the recent-mean residual case? \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Nephrops scenarios are formulated in harvest-rate space and follow the same
+logic, but the productivity shock is applied through the biodyn process-error
+multiplier rather than a recruitment residual. The scenario labels in
+\texttt{neph-f.csv} are \texttt{FStatus Quo} (status-quo harvest rate, process
+error $= 1$; the reference path), \texttt{FStatus Quo 75\%} and
+\texttt{FStatus Quo 50\%} (same status-quo harvest, process-error multiplier
+$0.75$ and $0.50$; i.e.\ fishing unchanged while productivity is progressively
+poorer), \texttt{Fmsy} ($F_{\mathrm{MSY}}$ harvest), and \texttt{PE}
+($F_{\mathrm{MSY}}$ with autocorrelated process-error noise). Note the
+capitalisation differs from the age-structured runs (\texttt{Fmsy} here versus
+\texttt{FMSY} for pelagic/demersal), and the Nephrops set has no \texttt{Regime}
+row. Albacore reports status-quo $F$ under recruitment multipliers 1, 0.75 and
+0.5 (reference, moderate, and strong productivity reduction).
+
+\subsection{Exports}
+\label{sec:tac-exports}
+
+Harmonised forecast tables are written as
+\texttt{data/TAC/csv/\{pel,dem,neph,iccat\}-f.csv} with columns \texttt{Scenario},
+\texttt{sid}, \texttt{Year}, \texttt{Catch}, \texttt{B}, and \texttt{Btrig}
+($B/B_{\mathrm{trigger}}$). Full trajectory objects are stored beside them as
+\texttt{*-fct.RData}.
+
+% -----------------------------------------------------------------------------
+\section{Pelagic stocks}
+\label{sec:tac-pel}
+
+The pelagic group comprises boarfish (\texttt{boc.27.6-8}), western horse
+mackerel (\texttt{hom.27.2a3a4a5b6a7a-ce-k8}), Northeast Atlantic mackerel
+(\texttt{mac.27.nea}), and blue whiting (\texttt{whb.27.1-91214}). Assessments
+are taken from SS3, the 2025 mackerel FLStock, and SAM, then reconciled to
+ICES SAG time series before the advice bridge
+(Figure~\ref{fig:pel-sag}).
+For resilience reading: compare status-quo paths under reduced recruitment
+with the Regime path to see whether recent productivity already implies
+materially lower long-run catch than the multi-year residual mean.
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=0.95\textwidth]{pel-sag-vs-stock.png}
+  \caption{Pelagic stocks: SAG summaries versus FLStock metrics scaled
+           relative to MSY reference points where available.}
+  \label{fig:pel-sag}
+\end{figure}
+
+Recruitment residual diagnostics and regime polygons underpin the Regime
+scenario (Figure~\ref{fig:pel-rec}). Projected catch under the five control
+rows is shown in Figure~\ref{fig:pel-fcst}; tabulated paths are in
+\texttt{pel-f.csv}.
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=0.95\textwidth]{pel-rec-residuals.png}
+  \caption{Pelagic stock--recruit residuals. Shaded polygons mark regime
+           segments used to define the Regime recruitment multiplier.}
+  \label{fig:pel-rec}
+\end{figure}
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=0.95\textwidth]{pel-forecast-catch.png}
+  \caption{Pelagic forecast catch by stock and scenario (status quo $F$,
+           reduced recruitment under status quo $F$, $F_{\mathrm{MSY}}$, and
+           Regime).}
+  \label{fig:pel-fcst}
+\end{figure}
+
+% -----------------------------------------------------------------------------
+\section{Demersal stocks}
+\label{sec:tac-dem}
+
+The demersal suite covers anglerfishes, northern hake, megrims, and whitings
+in the west and northern shelf assessment areas. Inputs combine
+\texttt{icesdata}, SAM, and SS3 (with season aggregation where required).
+Alignment against SAG is shown in Figure~\ref{fig:dem-sag}; residual regimes
+and catch projections follow the same control table as the pelagics
+(Figures~\ref{fig:dem-rec}--\ref{fig:dem-fcst}; \texttt{dem-f.csv}).
+Resilience reading is the same as for pelagics: gaps between status-quo and
+low-recruitment (or Regime) paths indicate how exposed demersal catch and
+biomass are if current productivity persists or worsens further.
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=0.95\textwidth]{dem-sag-vs-stock.png}
+  \caption{Demersal stocks: SAG versus FLStock diagnostics relative to
+           reference points.}
+  \label{fig:dem-sag}
+\end{figure}
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=0.95\textwidth]{dem-rec-residuals.png}
+  \caption{Demersal stock--recruit residuals with regime segments.}
+  \label{fig:dem-rec}
+\end{figure}
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=0.95\textwidth]{dem-forecast-catch.png}
+  \caption{Demersal forecast catch by stock and scenario.}
+  \label{fig:dem-fcst}
+\end{figure}
+
+% -----------------------------------------------------------------------------
+\section{Nephrops functional units}
+\label{sec:tac-neph}
+
+Nephrops are treated as data-limited surplus-production problems. SAG biomass,
+catch/landings and fishing pressure provide the observational scaffold
+(Figures~\ref{fig:neph-stock}--\ref{fig:neph-f}). Of the nine functional units
+carried through the resilience analysis, eight are projected here
+(\texttt{nep.fu.11}, \texttt{12}, \texttt{13}, \texttt{14}, \texttt{15},
+\texttt{19}, \texttt{2021}, \texttt{22}); \texttt{nep.fu.16} is excluded because
+its JABBA fit did not converge, so it does not appear in \texttt{neph-f.csv}.
+JABBA fits condition biodyn OMs; relative stock, yield and harvest trajectories
+are shown in
+Figures~\ref{fig:neph-jb-stock}--\ref{fig:neph-jb-h}. Process-error residuals
+and the associated regime decomposition
+(Figures~\ref{fig:neph-pe-res}--\ref{fig:neph-pe}) mirror the recruitment-regime
+step used for age-structured stocks.
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=0.95\textwidth]{neph-stock-ts.png}
+  \caption{Nephrops SAG stock biomass with $B_{\mathrm{trigger}}$ where
+           available.}
+  \label{fig:neph-stock}
+\end{figure}
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=0.95\textwidth]{neph-catch-ts.png}
+  \caption{Nephrops catch and landings by functional unit.}
+  \label{fig:neph-catch}
+\end{figure}
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=0.95\textwidth]{neph-f-ts.png}
+  \caption{Nephrops fishing pressure relative to $F_{\mathrm{MSY}}$.}
+  \label{fig:neph-f}
+\end{figure}
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=0.95\textwidth]{neph-jabba-stock.png}
+  \caption{JABBA stock biomass relative to $B_{\mathrm{MSY}}$.}
+  \label{fig:neph-jb-stock}
+\end{figure}
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=0.95\textwidth]{neph-jabba-yield.png}
+  \caption{JABBA catch relative to MSY.}
+  \label{fig:neph-jb-yield}
+\end{figure}
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=0.95\textwidth]{neph-jabba-harvest.png}
+  \caption{JABBA harvest relative to $F_{\mathrm{MSY}}$.}
+  \label{fig:neph-jb-h}
+\end{figure}
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=0.95\textwidth]{neph-proc-residuals.png}
+  \caption{Nephrops process-error residuals with regime polygons.}
+  \label{fig:neph-pe-res}
+\end{figure}
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=0.95\textwidth]{neph-proc-error.png}
+  \caption{Nephrops process-error time series.}
+  \label{fig:neph-pe}
+\end{figure}
+
+Forward harvest scenarios produce catch paths relative to MSY
+(Figure~\ref{fig:neph-fcst}; \texttt{neph-f.csv}). A status-quo harvest extract
+is also written as \texttt{neph-tac-sq.csv}. Closed-loop MSE with a survey HCR
+remains staged separately and is not part of this appendix.
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=0.95\textwidth]{neph-forecast-catch.png}
+  \caption{Nephrops projected catch relative to MSY under the harvest-rate
+           scenarios.}
+  \label{fig:neph-fcst}
+\end{figure}
+
+% -----------------------------------------------------------------------------
+\section{North Atlantic albacore (ICCAT)}
+\label{sec:tac-alb}
+
+Northern albacore (\texttt{alb-n}) is conditioned on the ICCAT SS3 assessment.
+Assessment panels and stock--recruit residuals are shown in
+Figures~\ref{fig:alb-check}--\ref{fig:alb-rec}. Advice catches bridge the stock
+into the projection window; status-quo $F$ is then held forward under
+recruitment multipliers of 1, 0.75 and 0.5
+(Figure~\ref{fig:alb-fcst}; \texttt{iccat-f.csv}).
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=0.95\textwidth]{alb-assessment-panels.png}
+  \caption{Albacore assessment time series with SS3 MSY-class reference
+           lines (catch, SSB, $F$, recruits).}
+  \label{fig:alb-check}
+\end{figure}
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=0.75\textwidth]{alb-rec-residuals.png}
+  \caption{Albacore stock--recruit residuals from the fitted Beverton--Holt
+           relationship.}
+  \label{fig:alb-rec}
+\end{figure}
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=0.95\textwidth]{alb-forecast.png}
+  \caption{Albacore forward projections under status-quo $F$ with recruitment
+           scaled by 1, 0.75 and 0.5.}
+  \label{fig:alb-fcst}
+\end{figure}
+
+% -----------------------------------------------------------------------------
+\section{Reading the scenarios}
+\label{sec:tac-read}
+
+\begin{itemize}
+  \item \textbf{Status-quo $F$ / harvest} isolates the effect of lower
+        recruitment (or process error) while fishing mortality stays recent.
+  \item \textbf{$F_{\mathrm{MSY}}$} asks whether MSY-based fishing, under the
+        same recruitment assumption, recovers or erodes biomass relative to
+        trigger points in the CSV ($B/B_{\mathrm{trig}}$).
+  \item \textbf{Regime} (ICES age-structured stocks) substitutes the latest
+        residual regime for the short-window residual mean---useful when the
+        recent decade is atypical of the whole series.
+  \item Absolute catch scales differ by stock; relative panels (Nephrops,
+        SAG/$B_{\mathrm{trig}}$ plots) support cross-unit comparison.
+\end{itemize}
+
+\subsection{Caveats and implications}
+\label{sec:tac-caveats}
+
+\begin{itemize}
+  \item \textbf{2025 SAG inputs where 2026 is incomplete.}
+        Terminal states and advice bridges may shift when 2026 assessments
+        are final. Implication: treat near-term levels as provisional; relative
+        scenario differences are more robust than absolute tonnes.
+  \item \textbf{Fishing pressure is held fixed after the bridge year.}
+        There is no annual advice feedback or HCR in these runs (except the
+        separate Nephrops MSE workstream). Implication: paths show exposure
+        under sustained pressure, not what management would actually decide
+        year by year.
+  \item \textbf{Recruitment / process-error assumptions are deterministic
+        scalars}, not stochastic ensembles. Implication: figures show central
+        scenario contrasts, not probability intervals or risk percentages.
+  \item \textbf{$B/B_{\mathrm{trigger}}$ is not on a common scale across
+        Nephrops functional units.} In \texttt{neph-f.csv} it ranges from below
+        $0.001$ to above $100$ between FUs (and up to $\sim 24$ for some
+        demersal stocks), reflecting differences in how each FU's biomass index
+        is scaled relative to its trigger. Implication: read
+        $B/B_{\mathrm{trigger}}$ \emph{within} a stock (relative to $1$), not as
+        a cross-FU magnitude, until the per-FU scaling is reconciled.
+  \item \textbf{Figures are regenerated from the R Markdown knits.}
+        Before locking V8.0, re-knit the four stock-group Rmds, refresh
+        \texttt{report/latex/figs/} in R with
+        \texttt{source("report/finalise/02\_stage\_figures.R"); stageFigures()},
+        and confirm captions still match the panels.
+\end{itemize}
+
+% -----------------------------------------------------------------------------
+\section*{Appendix data pointers}
+\addcontentsline{toc}{section}{Appendix data pointers}
+
+\begin{center}
+\begin{tabular}{@{}llp{0.42\textwidth}@{}}
+\toprule
+Group & Forecast CSV & Notes \\
+\midrule
+Pelagic  & \texttt{data/TAC/csv/pel-f.csv}   & Five scenarios through 2050 (4 stocks) \\
+Demersal & \texttt{data/TAC/csv/dem-f.csv}   & Same control table (8 stocks) \\
+Nephrops & \texttt{data/TAC/csv/neph-f.csv}  & Harvest-rate scenarios through 2041, 8 FUs (\texttt{nep.fu.16} excluded); also \texttt{neph-tac-sq.csv} \\
+Albacore & \texttt{data/TAC/csv/iccat-f.csv} & Status-quo $F$, three recruitment scales through 2050 \\
+\bottomrule
+\end{tabular}
+\end{center}

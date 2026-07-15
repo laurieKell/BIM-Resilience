@@ -1,0 +1,42 @@
+% Standalone compile of the TAC simulations chapter.
+% From this directory:
+%   pdflatex tac_simulations_standalone
+%   pdflatex tac_simulations_standalone
+%
+% In the parent report, use instead:
+%   \graphicspath{{report/latex/figs/}}
+%   \input{report/latex/chapter_tac_simulations}
+
+\documentclass[11pt,a4paper]{report}
+
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}
+\usepackage{microtype}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{geometry}
+\usepackage{hyperref}
+
+\geometry{margin=2.5cm}
+\graphicspath{{figs/}}
+\hypersetup{
+  colorlinks=true,
+  linkcolor=black,
+  urlcolor=blue,
+  citecolor=black
+}
+
+\title{Simulation of future TACs\\
+       \large Draft standalone chapter}
+\author{Laurence T.\ Kell}
+\date{\today}
+
+\begin{document}
+\maketitle
+\tableofcontents
+\clearpage
+
+\input{chapter_tac_simulations}
+
+\end{document}
