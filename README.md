@@ -24,12 +24,15 @@ loadShippedStocks("demersal")
 loadShippedStocks("iccat")
 ```
 
-Optional env vars:
+Optional env vars (override discovery; no machine-specific default):
 
 ```r
-Sys.setenv(RESILIENCE_ROOT = "C:/active/Resilience")
-Sys.setenv(RESILIENCE_DATA = "D:/bim-resilience-data")  # local analysis tree
+Sys.setenv(RESILIENCE_ROOT = "/path/to/BIM-Resilience")
+Sys.setenv(RESILIENCE_DATA = "/path/to/local-analysis-data")
 ```
+
+If unset, the project root is found by walking up from the Rmd / working directory
+until `DESCRIPTION`, `R/`, and `report/` are present.
 
 ## Reports
 

@@ -13,19 +13,17 @@
 #   source("report/finalise/03_qa_tac_csv.R"); qaTacCsv()
 # =============================================================================
 
-local({
-  a <- commandArgs(FALSE)
-  f <- sub("^--file=", "", a[grepl("^--file=", a)])
-  cands <- c(
-    if (length(f)) file.path(dirname(normalizePath(f)), "_config.R"),
-    file.path(getwd(), "report/finalise/_config.R"),
-    file.path(getwd(), "_config.R"),
-    "C:/active/Resilience/report/finalise/_config.R"
-  )
-  hit <- cands[file.exists(cands)]
-  if (!length(hit)) stop("_config.R not found; run from project root.", call. = FALSE)
-  sys.source(hit[1], envir = globalenv(), keep.source = FALSE)
-})
+# Load shared paths unless 00_run_all (or similar) already did.
+if (!exists("paths", inherits = TRUE)) {
+  for (cfg in c("report/finalise/_config.R", "finalise/_config.R", "_config.R")) {
+    if (file.exists(cfg)) {
+      sys.source(cfg, envir = globalenv(), keep.source = FALSE)
+      break
+    }
+  }
+  if (!exists("paths", inherits = TRUE))
+    stop("Cannot find _config.R; setwd to the project root.", call. = FALSE)
+}
 
 .rng <- function(x) {
   x <- x[is.finite(x)]

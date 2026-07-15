@@ -41,11 +41,8 @@ options(warn = -1)
 ```
 
 ```{r paths}
-# Change once if the project moves; package code lives in R/.
-projectRoot = "C:/active/Resilience"
-source(file.path(projectRoot, "report/ensureBimResilience.R"))
-ensureBimResilience(projectRoot)
-list2env(resiliencePaths(projectRoot), envir = environment())
+source(file.path(knitr::current_input(dir = TRUE), "ensureBimResilience.R"))
+setupReportPaths()
 ```
 
 ```{r libraries}
@@ -72,7 +69,8 @@ list2env(
   envir = environment())
 
 neph = subset(ts, !is.na(SB))
-ctc2026 = read.csv(adviceCsv)
+adviceFile = if (file.exists(adviceCsv)) adviceCsv else shippedAdvicePath(projectRoot)
+ctc2026 = read.csv(adviceFile)
 save(neph, rfpts, advice, file = file.path(dirOM, "neph-sag.RData"))
 ```
 
@@ -366,7 +364,7 @@ flag=!laply(bds,is.null)
 bds=mpb:::biodyns(bds[flag])
 
 
-ctcAdvice=melt(read.csv(adviceCsv, stringsAsFactors=FALSE))
+ctcAdvice=melt(read.csv(adviceFile, stringsAsFactors=FALSE))
 ctcAdvice=ctcAdvice[ctcAdvice$sid%in%names(jbNep),]
 ctcAdvice=transmute(ctcAdvice,sid=sid,data=value,year=substr(variable,2,5))
 ctcAdvice=FLQuants(dlply(ctcAdvice,.(sid), with, as.FLQuant(data.frame(year=year,data=data))))

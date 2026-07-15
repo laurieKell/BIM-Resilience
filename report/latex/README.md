@@ -22,7 +22,7 @@ source("report/finalise/05_build_appendix.R"); buildAppendix()
 Or by hand:
 
 ```bat
-cd C:\active\Resilience\report\latex
+cd report\latex
 pdflatex tac_simulations_standalone
 pdflatex tac_simulations_standalone
 ```

@@ -4,11 +4,17 @@ defaultProjectRoot = function() {
   if (exists("projectRoot", inherits = TRUE) &&
       is.character(projectRoot) && length(projectRoot) == 1 && nzchar(projectRoot))
     return(projectRoot)
+  if (exists("findProjectRoot", mode = "function"))
+    return(findProjectRoot())
   if (exists("resiliencePaths", mode = "function"))
     return(resiliencePaths()$projectRoot)
   envRoot = Sys.getenv("RESILIENCE_ROOT", "")
-  if (nzchar(envRoot)) return(normalizePath(envRoot, winslash = "/", mustWork = FALSE))
-  "C:/active/Resilience"
+  if (nzchar(envRoot))
+    return(normalizePath(envRoot, winslash = "/", mustWork = TRUE))
+  stop(
+    "Cannot resolve project root. Set RESILIENCE_ROOT or attach bimResilience.",
+    call. = FALSE
+  )
 }
 
 defaultSdgRoot = function(projectRoot = defaultProjectRoot()) {

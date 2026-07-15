@@ -1,13 +1,37 @@
 # =============================================================================
 # Finalisation config: shared paths and settings for the finalise/ scripts.
-# Source this first; every other script in this folder sources it.
+# Source this first; every other script in this folder sources it if needed.
 # Override the project root with:  Sys.setenv(RESILIENCE_ROOT = "D:/path")
 # =============================================================================
 
-projectRoot <- Sys.getenv("RESILIENCE_ROOT", "C:/active/Resilience")
-if (!dir.exists(projectRoot))
-  stop("Project root not found: ", projectRoot,
-       " (set RESILIENCE_ROOT).", call. = FALSE)
+projectRoot <- local({
+  envRoot <- Sys.getenv("RESILIENCE_ROOT", "")
+  if (nzchar(envRoot))
+    return(normalizePath(envRoot, winslash = "/", mustWork = TRUE))
+
+  # Prefer this file's location: report/finalise/_config.R → ../..
+  for (i in rev(seq_len(sys.nframe()))) {
+    f <- sys.frame(i)$ofile
+    if (!is.null(f) && identical(basename(f), "_config.R")) {
+      return(normalizePath(file.path(dirname(f), "..", ".."),
+                           winslash = "/", mustWork = TRUE))
+    }
+  }
+
+  # Else walk up from cwd looking for DESCRIPTION + R/ + report/
+  d <- normalizePath(getwd(), winslash = "/", mustWork = TRUE)
+  for (i in seq_len(24L)) {
+    if (file.exists(file.path(d, "DESCRIPTION")) &&
+        dir.exists(file.path(d, "R")) &&
+        dir.exists(file.path(d, "report")))
+      return(d)
+    parent <- dirname(d)
+    if (identical(parent, d)) break
+    d <- parent
+  }
+  stop("Project root not found. Set RESILIENCE_ROOT or source from the repo.",
+       call. = FALSE)
+})
 
 paths <- list(
   root      = projectRoot,

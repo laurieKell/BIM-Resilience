@@ -29,11 +29,8 @@ options(warn=-1)
 ```
 
 ```{r paths}
-# Change once if the project moves; package code lives in R/.
-projectRoot = "C:/active/Resilience"
-source(file.path(projectRoot, "report/ensureBimResilience.R"))
-ensureBimResilience(projectRoot)
-list2env(resiliencePaths(projectRoot), envir = environment())
+source(file.path(knitr::current_input(dir = TRUE), "ensureBimResilience.R"))
+setupReportPaths()
 ```
 
 # Purpose

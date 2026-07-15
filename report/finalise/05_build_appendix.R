@@ -8,22 +8,25 @@
 #   source("report/finalise/05_build_appendix.R"); buildAppendix()
 # =============================================================================
 
-local({
-  a <- commandArgs(FALSE)
-  f <- sub("^--file=", "", a[grepl("^--file=", a)])
-  cands <- c(
-    if (length(f)) file.path(dirname(normalizePath(f)), "_config.R"),
-    file.path(getwd(), "report/finalise/_config.R"),
-    file.path(getwd(), "_config.R"),
-    "C:/active/Resilience/report/finalise/_config.R"
-  )
-  hit <- cands[file.exists(cands)]
-  if (!length(hit)) stop("_config.R not found; run from project root.", call. = FALSE)
-  sys.source(hit[1], envir = globalenv(), keep.source = FALSE)
-
-  stg <- file.path(dirname(hit[1]), "02_stage_figures.R")
-  if (file.exists(stg)) sys.source(stg, envir = globalenv(), keep.source = FALSE)
-})
+# Load shared paths unless 00_run_all (or similar) already did.
+if (!exists("paths", inherits = TRUE)) {
+  for (cfg in c("report/finalise/_config.R", "finalise/_config.R", "_config.R")) {
+    if (file.exists(cfg)) {
+      sys.source(cfg, envir = globalenv(), keep.source = FALSE)
+      break
+    }
+  }
+  if (!exists("paths", inherits = TRUE))
+    stop("Cannot find _config.R; setwd to the project root.", call. = FALSE)
+}
+if (!exists("stageFigures", mode = "function")) {
+  for (stg in c("report/finalise/02_stage_figures.R", "02_stage_figures.R")) {
+    if (file.exists(stg)) {
+      sys.source(stg, envir = globalenv(), keep.source = FALSE)
+      break
+    }
+  }
+}
 
 buildAppendix <- function(texFile = "tac_simulations_standalone.tex") {
   if (exists("stageFigures", mode = "function")) stageFigures()

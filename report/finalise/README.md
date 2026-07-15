@@ -3,8 +3,8 @@
 Scripts to finalise `chapter_tac_simulations.tex` and build the standalone
 appendix PDF. Everything here is R — no Python, no PowerShell required.
 
-Run from the **project root** (`C:/active/Resilience`). Override the root with
-`Sys.setenv(RESILIENCE_ROOT = "...")` if needed.
+Run from the **project root** (the folder with `DESCRIPTION` / `Resilience.Rproj`).
+Override with `Sys.setenv(RESILIENCE_ROOT = "...")` if needed.
 
 ## Scripts
 

@@ -15,23 +15,17 @@
 # NOTE: 03_nephrops runs JABBA in parallel and is slow (minutes).
 # =============================================================================
 
-local({
-  findConfig <- function() {
-    a <- commandArgs(FALSE)
-    f <- sub("^--file=", "", a[grepl("^--file=", a)])
-    cands <- c(
-      if (length(f)) file.path(dirname(normalizePath(f)), "_config.R"),
-      file.path(getwd(), "report/finalise/_config.R"),
-      file.path(getwd(), "finalise/_config.R"),
-      file.path(getwd(), "_config.R"),
-      "C:/active/Resilience/report/finalise/_config.R"
-    )
-    hit <- cands[file.exists(cands)]
-    if (!length(hit)) stop("_config.R not found; run from project root.", call. = FALSE)
-    hit[1]
+# Load shared paths unless 00_run_all (or similar) already did.
+if (!exists("paths", inherits = TRUE)) {
+  for (cfg in c("report/finalise/_config.R", "finalise/_config.R", "_config.R")) {
+    if (file.exists(cfg)) {
+      sys.source(cfg, envir = globalenv(), keep.source = FALSE)
+      break
+    }
   }
-  sys.source(findConfig(), envir = globalenv(), keep.source = FALSE)
-})
+  if (!exists("paths", inherits = TRUE))
+    stop("Cannot find _config.R; setwd to the project root.", call. = FALSE)
+}
 
 renderAll <- function(formats = "html",
                       which = names(reports)) {
