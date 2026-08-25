@@ -1,173 +1,108 @@
-#' Mackerel-specific forward projections (recruitment levels, M shock, random rec).
+#' Mackerel illustration scenarios on top of \code{FLBacktest::fwdFbar}.
 #'
-#' These helpers operate on a single age-structured \code{FLStock} with an
-#' \code{FLSR} (from \code{attributes(eq)$sr}). They complement the shared
-#' pelagic control-table path in \code{buildFcstCtrl()} / \code{runFcstCtrl()}.
+#' Prefer calling \code{fwdFbar} directly in new notebooks. These thin wrappers
+#' only encode the three beamer “what-if” layouts (rec levels, M pulse,
+#' random recruitment). Metric tables use FLCore \code{model.frame(FLQuants)}.
 #'
 #' @name macProjections
 NULL
 
-#' Status-quo mean Fbar over the last \code{n} years.
-#' @export
-fsqMean = function(stk, n = 3L) {
-  if (!inherits(stk, "FLStock"))
-    stop("fsqMean: 'stk' must be an FLStock.", call. = FALSE)
-  n = as.integer(n)
-  if (length(n) != 1L || is.na(n) || n < 1L)
-    stop("fsqMean: 'n' must be a positive integer.", call. = FALSE)
-  my = dims(stk)$maxyear
-  yrs = ac(my - seq_len(n) + 1L)
-  fb = c(fbar(stk)[, yrs])
-  if (!all(is.finite(fb)))
-    stop("fsqMean: non-finite Fbar in years ", paste(yrs, collapse = ", "),
-         ".", call. = FALSE)
-  mean(fb)
-}
-
-#' Project under fixed F and a constant recruitment deviance.
-#'
-#' Thin wrapper around \code{FLasher::fwd}. Prefer that generic directly when
-#' building new workflows; see \code{flr-contrib/FLasher_projectFixedF.R}.
+#' Same F, different constant recruitment levels (via \code{fwdFbar}).
 #'
 #' @param stk FLStock through the advice year.
-#' @param sr FLSR used by FLasher.
-#' @param ftar Target Fbar (constant).
-#' @param recDev Constant recruitment deviance scalar.
+#' @param eql FLBRP with stock–recruit (same object passed to \code{fwdFbar}).
+#' @param ftar Target Fbar.
+#' @param recBase Baseline multiplicative residual.
+#' @param levels Multipliers applied to \code{recBase}.
 #' @param endYr Last projection year.
-#' @return Projected FLStock.
-#' @export
-projectFixedF = function(stk, sr, ftar, recDev, endYr = 2050L) {
-  if (!inherits(stk, "FLStock"))
-    stop("projectFixedF: 'stk' must be an FLStock.", call. = FALSE)
-  if (is.null(sr))
-    stop("projectFixedF: 'sr' (stock--recruit) is required.", call. = FALSE)
-  if (length(ftar) != 1L || !is.finite(ftar))
-    stop("projectFixedF: 'ftar' must be a single finite number.", call. = FALSE)
-  if (length(recDev) != 1L || !is.finite(recDev))
-    stop("projectFixedF: 'recDev' must be a single finite number.", call. = FALSE)
-  endYr = as.integer(endYr)
-  my = dims(stk)$maxyear
-  if (is.na(endYr) || endYr <= my)
-    stop("projectFixedF: 'endYr' (", endYr, ") must be > stock maxyear (",
-         my, ").", call. = FALSE)
-  yrs = seq(my + 1L, endYr)
-  control = fwdControl(
-    year  = yrs,
-    quant = "f",
-    value = rep(ftar, length(yrs)))
-  devs = FLQuant(recDev, dimnames = list(year = ac(yrs)))
-  FLasher::fwd(
-    fwdWindow(stk, end = max(yrs)),
-    control   = control,
-    sr        = sr,
-    deviances = devs)
-}
-
-#' (i) Same F, different constant recruitment levels.
-#'
-#' @param levels Multipliers applied to \code{recBase} (e.g. 1, 0.75, 0.5).
 #' @return Named list of FLStocks.
 #' @export
-projectRecLevels = function(stk, sr, ftar, recBase,
+projectRecLevels = function(stk, eql, ftar, recBase,
                             levels = c(1, 0.75, 0.5, 0.25),
                             endYr = 2050L) {
+  if (!requireNamespace("FLBacktest", quietly = TRUE))
+    stop("Install FLBacktest.", call. = FALSE)
+  years = (dims(stk)$maxyear + 1L):as.integer(endYr)
   out = lapply(levels, function(mul) {
-    projectFixedF(stk, sr, ftar, recDev = recBase * mul, endYr = endYr)
+    FLBacktest::fwdFbar(
+      stk, eql, f = ftar, years = years, biology = "window",
+      residuals = recBase * mul)
   })
   names(out) = paste0("Rec x", levels)
   out
 }
 
-#' (ii) One-off natural-mortality shock, then resume baseline M.
+#' One-off natural-mortality shock, then resume baseline M.
 #'
-#' Multiplies \code{m} by \code{mMul} for a single year (default: first
-#' projection year), then projects at fixed F with constant \code{recDev}.
-#'
-#' @param mMul Multiplier applied to M in the shock year (e.g. 2 = double M).
-#' @param shockYear Year of the M pulse; default \code{maxyear(stk) + 1}.
+#' @param mMul Multiplier applied to M in the shock year.
+#' @param shockYear Year of the M pulse; default first projection year.
 #' @param label Scenario name for the shocked run.
-#' @return Named list with \code{Baseline} (no M shock) and the shocked run.
+#' @inheritParams projectRecLevels
+#' @return Named list with \code{Baseline} and the shocked run.
 #' @export
-projectMShock = function(stk, sr, ftar, recDev,
+projectMShock = function(stk, eql, ftar, recDev,
                          mMul = 2,
                          shockYear = NULL,
                          endYr = 2050L,
                          label = NULL) {
+  if (!requireNamespace("FLBacktest", quietly = TRUE))
+    stop("Install FLBacktest.", call. = FALSE)
   my = dims(stk)$maxyear
   if (is.null(shockYear)) shockYear = my + 1L
   if (is.null(label))
     label = paste0("M x", mMul, " in ", shockYear)
+  years = (my + 1L):as.integer(endYr)
 
-  yrs = seq(my + 1L, as.integer(endYr))
-  control = fwdControl(
-    year  = yrs,
-    quant = "f",
-    value = rep(ftar, length(yrs)))
-  devs = FLQuant(recDev, dimnames = list(year = ac(yrs)))
+  baseline = FLBacktest::fwdFbar(
+    stk, eql, f = ftar, years = years, biology = "window",
+    residuals = recDev)
 
-  baseline = FLasher::fwd(
-    fwdWindow(stk, end = max(yrs)),
-    control   = control,
-    sr        = sr,
-    deviances = devs)
-
-  stkShock = fwdWindow(stk, end = max(yrs))
+  stkShock = FLCore::fwdWindow(stk, end = max(years))
   m(stkShock)[, ac(shockYear)] = m(stkShock)[, ac(shockYear)] * mMul
-  shocked = FLasher::fwd(
-    stkShock,
-    control   = control,
-    sr        = sr,
-    deviances = devs)
+  shocked = FLBacktest::fwdFbar(
+    stkShock, eql, f = ftar, years = years, biology = "window",
+    residuals = recDev)
 
   setNames(list(baseline, shocked), c("Baseline", label))
 }
 
-#' (iii) Random year-to-year recruitment around a mean deviance.
+#' Random year-to-year recruitment around a mean deviance.
 #'
-#' Draws log-normal multipliers with \code{sd = recSd} on the log scale
-#' (mean on the log scale bias-corrected so \code{E[dev] = recMean}).
-#' Each iteration is projected separately and returned as a list of FLStocks.
-#'
-#' @param niter Number of stochastic iterations.
-#' @param seed RNG seed for reproducibility.
-#' @return Named list of FLStocks (\code{iter1}, \code{iter2}, ...).
+#' @param recMean Mean multiplicative residual.
+#' @param recSd SD on the log scale (bias-corrected so \code{E[dev] = recMean}).
+#' @param niter Number of iterations.
+#' @param seed RNG seed.
+#' @inheritParams projectRecLevels
+#' @return Named list of FLStocks.
 #' @export
-projectRandomRec = function(stk, sr, ftar, recMean, recSd,
+projectRandomRec = function(stk, eql, ftar, recMean, recSd,
                             endYr = 2050L,
                             niter = 50L,
                             seed = 1L) {
-  yrs = seq(dims(stk)$maxyear + 1L, as.integer(endYr))
-  control = fwdControl(
-    year  = yrs,
-    quant = "f",
-    value = rep(ftar, length(yrs)))
-
+  if (!requireNamespace("FLBacktest", quietly = TRUE))
+    stop("Install FLBacktest.", call. = FALSE)
+  years = (dims(stk)$maxyear + 1L):as.integer(endYr)
   set.seed(seed)
   out = vector("list", niter)
   names(out) = paste0("iter", seq_len(niter))
-
   for (i in seq_len(niter)) {
-    # Bias-corrected lognormal: E[exp(X)] = recMean
     logDev = stats::rnorm(
-      length(yrs),
+      length(years),
       mean = log(recMean) - 0.5 * recSd^2,
-      sd   = recSd)
-    devs = FLQuant(exp(logDev), dimnames = list(year = ac(yrs)))
-    out[[i]] = FLasher::fwd(
-      fwdWindow(stk, end = max(yrs)),
-      control   = control,
-      sr        = sr,
-      deviances = devs)
+      sd = recSd)
+    out[[i]] = FLBacktest::fwdFbar(
+      stk, eql, f = ftar, years = years, biology = "window",
+      residuals = exp(logDev))
   }
   out
 }
 
 #' Long table of Catch / SSB / F / Recruits from a named list of FLStocks.
 #'
-#' @param stks Named list of FLStock (one scenario or iteration each).
+#' Thin convenience around \code{model.frame(FLQuants(...))}.
 #' @export
 macProjToDf = function(stks, scenarioCol = "Scenario") {
-  ldply(names(stks), function(sc) {
+  plyr::ldply(names(stks), function(sc) {
     x = stks[[sc]]
     df = model.frame(
       FLQuants(
@@ -182,14 +117,10 @@ macProjToDf = function(stks, scenarioCol = "Scenario") {
 }
 
 .macMetricLevels = c("Catch", "SSB", "Recruits", "F")
-
 .macMetricLabs = c(
-  Catch    = "Catch (t)",
-  SSB      = "SSB (t)",
-  Recruits = "Recruits",
-  F        = "Fbar")
+  Catch = "Catch (t)", SSB = "SSB (t)", Recruits = "Recruits", F = "Fbar")
 
-#' Long (melted) metric table for Catch / SSB / Recruits / F.
+#' Melt Catch/SSB/Recruits/F for faceted plots (report glue).
 #' @export
 macProjLong = function(df, idCols = NULL) {
   mets = .macMetricLevels
@@ -200,10 +131,7 @@ macProjLong = function(df, idCols = NULL) {
   d
 }
 
-#' Deterministic scenario lines: Catch, SSB, Recruits, F (2×2).
-#'
-#' @param df Output of [macProjToDf()] with a \code{Scenario} column.
-#' @param vline Optional vertical reference year (e.g. M-shock year).
+#' Deterministic scenario lines (beamer / report panels).
 #' @export
 plotMacMetrics = function(df, title, subtitle = NULL, vline = NULL) {
   d = macProjLong(df)
@@ -222,10 +150,7 @@ plotMacMetrics = function(df, title, subtitle = NULL, vline = NULL) {
   p
 }
 
-#' Stochastic summary bands: Catch, SSB, Recruits, F (2×2).
-#'
-#' @param df Output of [macProjToDf()] with an \code{iter} column.
-#' @param exIter Example iteration to overlay (default \code{"iter1"}).
+#' Stochastic summary bands (beamer / report panels).
 #' @export
 plotMacMetricsStochastic = function(df, title, subtitle = NULL,
                                     exIter = "iter1", probs = c(0.05, 0.95)) {

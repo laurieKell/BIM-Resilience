@@ -1,11 +1,12 @@
 Package: bimResilience
 Type: Package
 Title: BIM Fisheries Resilience Analysis Tools
-Version: 0.1.0
+Version: 0.1.1
 Authors@R: person("L.T.", "Kell", email = "l.kell@bim.ie", role = c("aut", "cre"))
-Description: Tools for analyzing fisheries resilience under climate change scenarios.
-    Provides functions for stock assessment, forward projection, and scenario analysis
-    for ICES stocks including data-rich, data-limited, and Nephrops functional units.
+Description: Application layer for BIM fisheries resilience TAC scenarios.
+    Constant-F projection and seasonal collapse use FLBacktest generics
+    (shared with blueMarine); this package keeps SAG I/O, BIM scenario labels,
+    and report glue.
 License: MIT + file LICENSE
 Encoding: UTF-8
 LazyData: false
@@ -16,6 +17,7 @@ Imports:
     FLCore,
     FLBRP,
     FLasher,
+    FLBacktest (>= 0.1.6),
     FLife,
     FLCandy,
     mpb,
@@ -43,8 +45,9 @@ Suggests:
     testthat,
     knitr,
     rmarkdown,
-    ggplot2,
-    FLasher,
     FLRebuild,
-    plyr
+    remotes
+Remotes:
+    laurieKell/FLBacktest
 VignetteBuilder: knitr
+URL: https://github.com/laurieKell/BIM-Resilience

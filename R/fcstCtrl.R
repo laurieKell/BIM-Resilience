@@ -1,7 +1,8 @@
-#' Build forecast control table for FLasher::fwd
+#' Build BIM scenario control table (app-specific labels).
 #'
-#' One row per stock x scenario. Columns `ftar` and `recDev` are the values
-#' passed to `fwdControl()` and `deviances=` in `FLasher::fwd()`.
+#' Assembles the resilience report's named scenarios. Projection itself uses
+#' \code{FLBacktest::fwdFbar} via [runFcstCtrl()] — do not re-implement
+#' constant-\eqn{F} \code{fwd} here.
 #'
 #' @param sid Character vector of stock ids.
 #' @param stks Named FLStocks list.
@@ -56,13 +57,16 @@ buildFcstCtrl = function(sid,
     stop("buildFcstCtrl: stocks missing from 'stks': ",
          paste(missStk, collapse = ", "), ".", call. = FALSE)
 
+  fsqNyr = as.integer(fsqNyr)
   fsqF = vapply(sid, function(id) {
-    tryCatch(
-      fsqMean(stks[[id]], n = as.integer(fsqNyr)),
-      error = function(e)
-        stop("buildFcstCtrl: status-quo F failed for '", id, "': ",
-             conditionMessage(e), call. = FALSE)
-    )
+    stk = stks[[id]]
+    my = dims(stk)$maxyear
+    yrs = ac(my - seq_len(fsqNyr) + 1L)
+    fb = c(fbar(stk)[, yrs])
+    if (!all(is.finite(fb)))
+      stop("buildFcstCtrl: non-finite Fbar for '", id, "' in years ",
+           paste(yrs, collapse = ", "), ".", call. = FALSE)
+    mean(fb)
   }, numeric(1))
   names(fsqF) = sid
 
@@ -81,17 +85,21 @@ buildFcstCtrl = function(sid,
   ctrl[, c("scenario", "sid", "ftar", "recDev", "endYr"), drop = FALSE]
 }
 
-#' Run forward projections from a forecast control table
+#' Run BIM forecast scenarios with \code{FLBacktest::fwdFbar}.
 #'
-#' Uses \code{FLasher::fwd} per stock/scenario. Stops on the first missing
-#' stock, equilibrium, SRR, or non-finite control value.
+#' Thin app loop over the control table from [buildFcstCtrl()]. Projection
+#' logic lives in FLBacktest (same engine as blueMarine).
 #'
 #' @param ctrl Data frame from [buildFcstCtrl()].
 #' @param stks Named FLStocks list.
-#' @param eqs Named list of FLBRP objects (SRR taken from `attributes(eqs[[sid]])$sr`).
+#' @param eqs Named list of FLBRP objects.
 #' @return Named list of FLStocks objects, one per `scenario`.
 #' @export
 runFcstCtrl = function(ctrl, stks, eqs) {
+  if (!requireNamespace("FLBacktest", quietly = TRUE))
+    stop("runFcstCtrl: install FLBacktest ",
+         "(remotes::install_github(\"laurieKell/FLBacktest\")).", call. = FALSE)
+
   need = c("scenario", "sid", "ftar", "recDev", "endYr")
   miss = setdiff(need, names(ctrl))
   if (length(miss))
@@ -114,37 +122,16 @@ runFcstCtrl = function(ctrl, stks, eqs) {
              call. = FALSE)
       if (is.null(eqs[[id]]))
         stop("runFcstCtrl: no equilibrium for '", id, "'.", call. = FALSE)
-      sr = attributes(eqs[[id]])$sr
-      if (is.null(sr))
-        stop("runFcstCtrl: attributes(eqs[['", id, "']])$sr is NULL.",
-             call. = FALSE)
-      if (!is.finite(row$ftar) || !is.finite(row$recDev))
-        stop("runFcstCtrl: non-finite ftar/recDev for '", id,
-             "' in scenario '", sc, "'.", call. = FALSE)
 
       stk = stks[[id]]
       my = dims(stk)$maxyear
       if (row$endYr <= my)
         stop("runFcstCtrl: endYr (", row$endYr, ") must be > maxyear (",
              my, ") for '", id, "'.", call. = FALSE)
-      yrs = ac((my + 1):row$endYr)
-      control = fwdControl(
-        year = as.numeric(yrs),
-        quant = "f",
-        value = rep(row$ftar, length(yrs))
-      )
-      devs = FLQuant(row$recDev, dimnames = list(year = yrs))
-      stocks[[id]] = tryCatch(
-        FLasher::fwd(
-          fwdWindow(stk, end = max(an(yrs))),
-          control = control,
-          sr = sr,
-          deviances = devs
-        ),
-        error = function(e)
-          stop("runFcstCtrl: FLasher::fwd failed for '", id,
-               "' / '", sc, "': ", conditionMessage(e), call. = FALSE)
-      )
+      years = (my + 1L):as.integer(row$endYr)
+      stocks[[id]] = FLBacktest::fwdFbar(
+        stk, eqs[[id]], f = row$ftar, years = years,
+        biology = "window", residuals = row$recDev)
     }
     out[[sc]] = FLStocks(stocks)
   }

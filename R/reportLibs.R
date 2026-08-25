@@ -7,7 +7,7 @@
 #' @return Invisibly, the packages loaded.
 #' @export
 loadReportLibraries = function(extra = character()) {
-  required = c("FLCore", "FLasher", "FLBRP", "plyr", "dplyr")
+  required = c("FLCore", "FLasher", "FLBRP", "FLBacktest", "plyr", "dplyr")
   optional = c(
     "FLRebuild", "ggplotFL", "icesdata", "icesSAG",
     "FLfse", "stockassessment", "r4ss", "ss3om",
@@ -19,7 +19,9 @@ loadReportLibraries = function(extra = character()) {
   if (length(missingReq))
     stop("loadReportLibraries: required packages not installed: ",
          paste(missingReq, collapse = ", "),
-         ". Install them, then retry.", call. = FALSE)
+         ". Install FLBacktest with ",
+         "remotes::install_github(\"laurieKell/FLBacktest\").",
+         call. = FALSE)
 
   for (p in required) {
     if (!paste0("package:", p) %in% search())

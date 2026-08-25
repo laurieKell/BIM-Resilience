@@ -2,37 +2,35 @@
 
 ## Rule
 
-Prefer **existing FLCore / FLasher / FLBRP / FLRebuild / ggplotFL / mpb generics**
-over one-off helpers. Before adding a new exported function in bimResilience:
+Prefer **FLBacktest / FLCore / FLasher / FLBRP / ggplotFL / mpb** generics
+over one-off helpers. BIM Resilience and [blueMarine](https://github.com/laurieKell/blueMarine)
+share the same engine ([FLBacktest](https://github.com/laurieKell/FLBacktest)).
 
-1. Check whether an FLR method already does the job (`fwd`, `fwdControl`,
-   `fwdWindow`, `eql`, `rod`, `ssb`, `fbar`, `computeCatch`, ggplotFL `plot`, …).
-2. If the logic is reusable beyond this report, sketch it under `flr-contrib/`
-   and contribute upstream instead of growing a parallel API.
-3. Keep bimResilience wrappers thin: project paths, ICES/SAG I/O, scenario
-   labels, and report artefact layout.
+Before adding an exported function here:
 
-## Prefer upstream (call, don’t reimplement)
+1. Check FLBacktest (`fwdFbar`, `annualise`, `cleanStock`, `srResiduals`, …).
+2. Check upstream FLR (`fwd`, `eql`, `rod`, ggplotFL `plot`).
+3. If reusable beyond this report, add it to FLBacktest (not a local copy).
+4. Keep bimResilience for BIM scenario labels, SAG I/O, and report artefacts.
+
+Details: [`docs/app_vs_package.md`](../docs/app_vs_package.md).
+
+## Prefer (call, don’t reimplement)
 
 | Capability | Prefer |
 |------------|--------|
-| Forward projection | `FLasher::fwd`, `fwdControl`, `fwdWindow` |
-| Equilibrium / BRP | `FLBRP::eql`, refpts accessors |
-| Regime residuals | `FLRebuild::rod` |
+| Constant-\(F\) projection | `FLBacktest::fwdFbar` / `fwdFmsy` |
+| Seasonal collapse | `FLBacktest::annualise` |
+| Equilibrium / BRP | `FLBRP::eql` / `icesdata::eql` |
+| Regime residuals | `FLRebuild::rod` (+ `FLBacktest::srResiduals`) |
 | Biomass-dynamic fwd | `mpb::fwd` |
-| Stock metrics / plots | FLCore accessors + `ggplotFL::plot` / `geom_flpar` |
-| Seasonal collapse | contribute `annualise` → FLCore (see `flr-contrib/`) |
+| Stock metrics / plots | FLCore accessors + `ggplotFL::plot` |
 
 ## Remain project-specific in bimResilience
 
-These stay local even if pieces inspire FLR PRs:
-
-- **SAG / advice I/O** — `loadSagBundle`, `fetchSagTs`, `loadSagRefpts`, `loadAdviceFlqs`, path helpers
-- **Stock catalogue** — `bimSids`, shipped OM loaders
-- **TAC report pipeline** — `simTAC`, `saveSimTacResults`, `buildForecastTacCsv`, `buildFcstCtrl` scenario labels
-- **Equilibrium orchestration** — `calcEqAndRegimes` (wires `calcEq` + `rod` for this workflow)
-- **Nephrops OM scenarios** — `buildNephOps` (BIM scenario names / PE defaults)
-- **Report plot glue** — `plotRecResiduals`, `plotForecastCatch`, `saveGroupPlotBundle`, `unpackFcstScenarios`, `assertAfterEquilibrium`
-- **Mackerel presentation plots** — `plotMacMetrics*`, `macProjToDf` (until generalised into ggplotFL)
-
-Contribution candidates and rename suggestions: `flr-contrib/README.md`.
+- SAG / advice I/O — `loadSagBundle`, path helpers
+- Stock catalogue — `bimSids`, shipped OM loaders
+- BIM TAC scenario labels — `buildFcstCtrl`, `simTAC`, CSV layout
+- Equilibrium orchestration for this report — `calcEqAndRegimes`
+- Nephrops OM scenarios — `buildNephOps`
+- Beamer metric panels — `plotMacMetrics*` (presentation glue)

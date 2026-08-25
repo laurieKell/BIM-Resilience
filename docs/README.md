@@ -4,6 +4,7 @@ Professional documentation for the BIM fisheries resilience biological simulatio
 
 | Document | Audience | Purpose |
 |----------|----------|---------|
+| [app_vs_package.md](app_vs_package.md) | Analysts / package authors | FLBacktest vs bimResilience vs blueMarine |
 | [executive_summary.md](executive_summary.md) | BIM / industry / policy | Short briefing on purpose, stocks, scenarios, key messages, caveats, and CREST use |
 | [report_main.md](report_main.md) | Technical readers / report draft | Full draft report with filled methods, group results, cross-cutting interpretation |
 | [manuscript_outline.md](manuscript_outline.md) | Academic authors | Peer-review manuscript outline (ICES JMS / Frontiers-style) |

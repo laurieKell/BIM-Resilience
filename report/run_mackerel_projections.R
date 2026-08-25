@@ -22,34 +22,37 @@ seed      = 1L
 load(file.path(dirOM, "pel-om.RData"))
 
 stk  = stks[[sid]]
-sr   = attributes(eqs[[sid]])$sr
-ftar = fsqMean(stk, n = fsqNyr)
+eql  = eqs[[sid]]
+my   = dims(stk)$maxyear
+ftar = mean(c(fbar(stk)[, ac(my - seq_len(fsqNyr) + 1L)]))
+if (!is.finite(ftar))
+  stop("Non-finite status-quo F for ", sid, call. = FALSE)
 
 srsMac = as.data.frame(srs)
 srsMac = srsMac[srsMac$sid == sid, , drop = FALSE]
 recBase = exp(mean(utils::tail(srsMac$rsd, 4)))
 if (is.null(recSd)) recSd = stats::sd(srsMac$rsd, na.rm = TRUE)
-if (is.null(shockYear)) shockYear = dims(stk)$maxyear + 1L
+if (is.null(shockYear)) shockYear = my + 1L
 btrig = rfpts$MSYBtrigger[rfpts$sid == sid][1]
 
 message(sprintf(
   "mac.27.nea | maxyear=%s | Fsq=%.3f | recentDev=%.3f | recSd=%.3f | M shock year=%s (x%s)",
-  dims(stk)$maxyear, ftar, recBase, recSd, shockYear, mMul))
+  my, ftar, recBase, recSd, shockYear, mMul))
 
 # (i) recruitment levels
 message("Running recruitment-level projections...")
-recRuns = projectRecLevels(stk, sr, ftar, recBase, levels = recLevels, endYr = endYr)
+recRuns = projectRecLevels(stk, eql, ftar, recBase, levels = recLevels, endYr = endYr)
 dfRec = macProjToDf(recRuns)
 
 # (ii) M shock
 message("Running M-shock projections...")
-mRuns = projectMShock(stk, sr, ftar, recBase, mMul = mMul, shockYear = shockYear, endYr = endYr)
+mRuns = projectMShock(stk, eql, ftar, recBase, mMul = mMul, shockYear = shockYear, endYr = endYr)
 dfM = macProjToDf(mRuns)
 
 # (iii) random recruitment
 message("Running random-recruitment projections...")
 stkRand = projectRandomRec(
-  stk, sr, ftar, recBase, recSd,
+  stk, eql, ftar, recBase, recSd,
   endYr = endYr, niter = niter, seed = seed)
 dfRand = macProjToDf(stkRand, scenarioCol = "iter")
 summ = plyr::ddply(dfRand, "year", function(d) {

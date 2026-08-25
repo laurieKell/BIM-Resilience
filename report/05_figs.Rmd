@@ -297,8 +297,11 @@ theme_mac_catch = function(base_size = 12) {
 load(file.path(dirOM, "pel-om.RData"))
 
 macStk  = stks[[macSid]]
-macSr   = attributes(eqs[[macSid]])$sr
-macFtar = fsqMean(macStk, n = 3L)
+macEql  = eqs[[macSid]]
+macMy   = dims(macStk)$maxyear
+macFtar = mean(c(fbar(macStk)[, ac(macMy - 2:0)]))
+if (!is.finite(macFtar))
+  stop("Non-finite status-quo F for ", macSid, call. = FALSE)
 
 srsMac = as.data.frame(srs)
 srsMac = srsMac[srsMac$sid == macSid, , drop = FALSE]
@@ -308,7 +311,7 @@ macRecSd   = stats::sd(srsMac$rsd, na.rm = TRUE)
 
 ```{r mac-rec, fig.width=8, fig.height=5}
 macRecRuns = projectRecLevels(
-  macStk, macSr, macFtar, macRecBase,
+  macStk, macEql, macFtar, macRecBase,
   levels = macRecLevels,
   endYr  = macEndYr)
 dfMacRec = macProjToDf(macRecRuns)
@@ -327,7 +330,7 @@ save_beamer_fig(ggMacRec, "fig_mac_rec.png", width = 8, height = 5)
 
 ```{r mac-mshock, fig.width=8, fig.height=5}
 macMRuns = projectMShock(
-  macStk, macSr, macFtar, macRecBase,
+  macStk, macEql, macFtar, macRecBase,
   mMul      = macMMul,
   shockYear = macShockYr,
   endYr     = macEndYr)
@@ -348,7 +351,7 @@ save_beamer_fig(ggMacM, "fig_mac_mshock.png", width = 8, height = 5)
 
 ```{r mac-rand, fig.width=8, fig.height=5}
 macRand = projectRandomRec(
-  macStk, macSr, macFtar, macRecBase, macRecSd,
+  macStk, macEql, macFtar, macRecBase, macRecSd,
   endYr = macEndYr,
   niter = macNiter,
   seed  = macSeed)

@@ -102,7 +102,7 @@ if (isTRUE(rebuildDemStks)) {
   stks[["hke.27.3a46-8abd"]] = hke.27.3a46$FLStock
   mat(stks[["hke.27.3a46-8abd"]])[, , "M2", 1] = mat(stks[["hke.27.3a46-8abd"]])[, , "F2", 1]
   mat(stks[["hke.27.3a46-8abd"]])[, , "M3", 1] = mat(stks[["hke.27.3a46-8abd"]])[, , "F3", 1]
-  stks[["hke.27.3a46-8abd"]] = annualise(stks[["hke.27.3a46-8abd"]])
+  stks[["hke.27.3a46-8abd"]] = FLBacktest::annualise(stks[["hke.27.3a46-8abd"]])
 
   dir.create(dirOM, recursive = TRUE, showWarnings = FALSE)
   save(stks, file = file.path(dirOM, "dem-stks.RData"))

@@ -1,16 +1,21 @@
 # bimResilience
 
-R package and stock-group workflows for BIM fisheries resilience analysis.
+Application layer for BIM fisheries resilience TAC scenarios.
 
-**Repository:** https://github.com/laurieKell/BIM-Resilience
+**Shared FLR engine (with blueMarine):** [FLBacktest](https://github.com/laurieKell/FLBacktest)  
+**Repository:** https://github.com/laurieKell/BIM-Resilience  
+**Architecture:** [`docs/app_vs_package.md`](docs/app_vs_package.md)
 
 ## Install / load
 
 ```r
+remotes::install_github("laurieKell/FLBacktest")  # shared generics
 # remotes::install_github("laurieKell/BIM-Resilience")
 devtools::load_all(".")   # local development from project root
 ```
 
+Prefer `FLBacktest::fwdFbar` and `FLBacktest::annualise` over local helpers.
+BIM keeps only scenario labels, SAG I/O, and report glue.
 ## Re-run the analysis (pipeline)
 
 | Step | Path | Role |
