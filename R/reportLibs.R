@@ -7,17 +7,38 @@
 #' @return Invisibly, the packages loaded.
 #' @export
 loadReportLibraries = function(extra = character()) {
-  pkgs = c(
-    "FLCore", "FLasher", "FLBRP", "FLRebuild",
-    "ggplotFL", "icesdata", "icesSAG",
-    "FLfse", "stockassessment",
-    "r4ss", "ss3om",
-    "xtable", "plyr", "dplyr", "reshape",
+  required = c("FLCore", "FLasher", "FLBRP", "plyr", "dplyr")
+  optional = c(
+    "FLRebuild", "ggplotFL", "icesdata", "icesSAG",
+    "FLfse", "stockassessment", "r4ss", "ss3om",
+    "xtable", "reshape",
     extra
   )
-  for (p in pkgs)
-    suppressPackageStartupMessages(
-      suppressWarnings(
-        library(p, character.only = TRUE, quietly = TRUE, verbose = FALSE)))
-  invisible(pkgs)
+  missingReq = required[!vapply(required, requireNamespace, logical(1),
+                                quietly = TRUE)]
+  if (length(missingReq))
+    stop("loadReportLibraries: required packages not installed: ",
+         paste(missingReq, collapse = ", "),
+         ". Install them, then retry.", call. = FALSE)
+
+  for (p in required) {
+    if (!paste0("package:", p) %in% search())
+      suppressPackageStartupMessages(
+        library(p, character.only = TRUE, quietly = TRUE, verbose = FALSE))
+  }
+
+  missingOpt = character(0)
+  for (p in optional) {
+    if (!requireNamespace(p, quietly = TRUE)) {
+      missingOpt = c(missingOpt, p)
+      next
+    }
+    if (!paste0("package:", p) %in% search())
+      suppressPackageStartupMessages(
+        library(p, character.only = TRUE, quietly = TRUE, verbose = FALSE))
+  }
+  if (length(missingOpt))
+    message("loadReportLibraries: optional packages not available (skipped): ",
+            paste(unique(missingOpt), collapse = ", "))
+  invisible(c(required, setdiff(optional, missingOpt)))
 }

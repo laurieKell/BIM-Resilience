@@ -23,7 +23,7 @@ output:
 
 # Purpose
 
-This report runs the **ICCAT albacore** workflow in three stages: **(i)** get the chosen stock (`alb-n`), **(ii)** update with advice catches, **(iii)** simulate future TACs. Methods and multi-stock discussion belong in `report/00_report.Rmd`.
+This report runs the **ICCAT albacore** workflow in three stages: **(i)** get the chosen stock (`alb-n`), **(ii)** update with advice catches, **(iii)** simulate future TACs. Methods and multi-stock discussion belong in `docs/report_main.md`.
 
 **Outputs:** **`alb_plot.RData`**, **`iccat-fct.RData`**, **`csv/iccat-f.csv`**.
 
@@ -31,14 +31,13 @@ This report runs the **ICCAT albacore** workflow in three stages: **(i)** get th
 
 
 ```{r}
-knitr::opts_chunk$set(warning = FALSE, 
-                      message = FALSE)
+knitr::opts_chunk$set(warning = TRUE, message = TRUE, error = FALSE)
 
-options(warn=-1) 
+# fail-fast: do not swallow warnings (was options(warn = -1)) 
 ```
 
 ```{r paths}
-source(file.path(knitr::current_input(dir = TRUE), "ensureBimResilience.R"))
+source(file.path(dirname(knitr::current_input(dir = TRUE)), "ensureBimResilience.R"))
 setupReportPaths()
 ```
 
@@ -243,4 +242,4 @@ save(ggPlots04Iccat, file=file.path(dirReport, "figs", "alb_plot_html.RData"))
 
 ## Summary
 
-Albacore workflow produces SS3-conditioned diagnostics, recruitment residual plot, recruitment-scaled forward projections, **`data/TAC/csv/iccat-f.csv`** (deterministic scenarios), and packaged ggplot lists for `00_report.Rmd`.
+Albacore workflow produces SS3-conditioned diagnostics, recruitment residual plot, recruitment-scaled forward projections, **`data/TAC/csv/iccat-f.csv`** (deterministic scenarios), and packaged ggplot lists for `docs/report_main.md`.

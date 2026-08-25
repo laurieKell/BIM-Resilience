@@ -8,3 +8,8 @@
 ^report$
 ^Resilience\.Rproj$
 ^LICENSE\.md$
+
+^docs$
+^flr-contrib$
+^man-src$
+^fsp100\.pdf$

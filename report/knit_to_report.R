@@ -133,8 +133,8 @@ knit_to_report <- function(input_file,
     ".", spec$ext
   )
 
-  knitr::opts_chunk$set(warning = FALSE, message = FALSE)
-  options(warn = -1)
+  knitr::opts_chunk$set(warning = TRUE, message = TRUE, error = FALSE)
+  # fail-fast: do not swallow warnings (was options(warn = -1))
 
   rmarkdown::render(
     input_file,

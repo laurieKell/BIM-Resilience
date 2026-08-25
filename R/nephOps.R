@@ -24,54 +24,69 @@ buildNephOps <- function(bds,
                          endYear         = max(projectionYears)+1,
                          processErrorSd  = 0.15,
                          processErrorB   = 0.3) {
+  if (!length(bds))
+    stop("buildNephOps: 'bds' is empty.", call. = FALSE)
+  if (!requireNamespace("mpb", quietly = TRUE))
+    stop("buildNephOps: package 'mpb' is required.", call. = FALSE)
+
   stockIds = names(bds)
+  if (is.null(stockIds) || any(!nzchar(stockIds)))
+    stop("buildNephOps: 'bds' must be a named list of biodyn objects.",
+         call. = FALSE)
 
-  rtn=list()
+  rtn = list()
   for (id in stockIds) {
-    if (is.null(bds[[id]])) {
-      stop(paste("Missing biodyn object for stock:", id))
-    }
+    if (is.null(bds[[id]]))
+      stop("buildNephOps: missing biodyn object for stock: ", id, call. = FALSE)
 
-    bd       = bds[[id]]
+    bd = bds[[id]]
     bd@stock = window(stock(bd), end = endYear)
     bd@catch = window(catch(bd), end = endYear)
-    range(bd)= unlist(dims(stock(bd))[c("minyear", "maxyear")])
-    
-    if (!is.null(advice))
-      if (!is.null(advice[[id]]))
-         bd  =mpb::fwd(bd,catch=advice[[id]][,yrs])
-      
-    bdSQ = mpb::fwd(
-      bd,
-      harvest = as.FLQuant(
-        mean(harvest(bd)[, ac(sqYears)]),
-        dimnames = list(year = projectionYears)),
-    
-      pe=FLQuant(1,dimnames=dimnames(bd@stock)))
+    range(bd) = unlist(dims(stock(bd))[c("minyear", "maxyear")])
 
-    
-    bdSQ75 = mpb::fwd(
-      bd,
-      harvest = as.FLQuant(
-        mean(harvest(bd)[, ac(sqYears)]),
-        dimnames = list(year = projectionYears)),
-      
-      pe=FLQuant(0.75,dimnames=dimnames(bd@stock)))
-    
-    bdSQ50 = mpb::fwd(
-      bd,
-      harvest = as.FLQuant(
-        mean(harvest(bd)[, ac(sqYears)]),
-        dimnames = list(year = projectionYears)),
-      
-      pe=FLQuant(0.50,dimnames=dimnames(bd@stock)))
-    
-    bdFmsy = mpb::fwd(
-      bd,
-      harvest = FLQuant(
-        refpts(bd)["fmsy", drop = TRUE],
-        dimnames = list(year = projectionYears)
+    if (!is.null(advice) && !is.null(advice[[id]])) {
+      bd = tryCatch(
+        mpb::fwd(bd, catch = advice[[id]][, yrs]),
+        error = function(e)
+          stop("buildNephOps: advice bridge failed for '", id, "': ",
+               conditionMessage(e), call. = FALSE)
       )
+    }
+
+    hSq = mean(c(harvest(bd)[, ac(sqYears)]))
+    if (!is.finite(hSq))
+      stop("buildNephOps: non-finite status-quo harvest for '", id,
+           "' in years ", paste(sqYears, collapse = ", "), ".", call. = FALSE)
+    fmsy = tryCatch(
+      refpts(bd)["fmsy", drop = TRUE],
+      error = function(e)
+        stop("buildNephOps: refpts fmsy missing for '", id, "': ",
+             conditionMessage(e), call. = FALSE)
+    )
+    if (!is.finite(fmsy))
+      stop("buildNephOps: non-finite fmsy for '", id, "'.", call. = FALSE)
+
+    hSqQ = as.FLQuant(hSq, dimnames = list(year = projectionYears))
+    pe1 = FLQuant(1, dimnames = dimnames(bd@stock))
+    pe75 = FLQuant(0.75, dimnames = dimnames(bd@stock))
+    pe50 = FLQuant(0.50, dimnames = dimnames(bd@stock))
+
+    runFwd = function(label, harvest, pe = NULL) {
+      tryCatch(
+        if (is.null(pe)) mpb::fwd(bd, harvest = harvest)
+        else mpb::fwd(bd, harvest = harvest, pe = pe),
+        error = function(e)
+          stop("buildNephOps: mpb::fwd failed for '", id, "' / ", label,
+               ": ", conditionMessage(e), call. = FALSE)
+      )
+    }
+
+    bdSQ = runFwd("FStatus Quo", hSqQ, pe1)
+    bdSQ75 = runFwd("FStatus Quo 75%", hSqQ, pe75)
+    bdSQ50 = runFwd("FStatus Quo 50%", hSqQ, pe50)
+    bdFmsy = runFwd(
+      "Fmsy",
+      FLQuant(fmsy, dimnames = list(year = projectionYears))
     )
 
     processError = rlnoise(
@@ -81,21 +96,21 @@ buildNephOps <- function(bds,
       b = processErrorB
     )
 
-    bdPe = mpb::fwd(
-      bd,
-      harvest = FLQuant(
-        refpts(bd)["fmsy", drop = TRUE],
-        dimnames = list(year = projectionYears)
-      ),
-      pe = processError
+    bdPe = runFwd(
+      "PE",
+      FLQuant(fmsy, dimnames = list(year = projectionYears)),
+      processError
     )
 
-    rtn[[id]]=list("FStatus Quo"     = bdSQ,
-                   "FStatus Quo 75%" = bdSQ75,
-                   "FStatus Quo 50%" = bdSQ50, 
-                   "Fmsy" = bdFmsy, 
-                   "PE"   = bdPe)
-    }
+    rtn[[id]] = list(
+      "FStatus Quo" = bdSQ,
+      "FStatus Quo 75%" = bdSQ75,
+      "FStatus Quo 50%" = bdSQ50,
+      "Fmsy" = bdFmsy,
+      "PE" = bdPe
+    )
+  }
 
-  names(rtn)=stockIds
-  rtn}
+  names(rtn) = stockIds
+  rtn
+}

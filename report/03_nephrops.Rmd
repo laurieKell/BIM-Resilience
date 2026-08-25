@@ -23,7 +23,7 @@ output:
 
 # Purpose {#purpose}
 
-This report runs the **Nephrops** workflow in three stages: **(i)** get chosen stocks (SAG / functional units), **(ii)** update to the current year (JABBA / biodyn conditioning), **(iii)** simulate future TACs. Methods and synthesis belong in `report/00_report.Rmd`.
+This report runs the **Nephrops** workflow in three stages: **(i)** get chosen stocks (SAG / functional units), **(ii)** update to the current year (JABBA / biodyn conditioning), **(iii)** simulate future TACs. Methods and synthesis belong in `docs/report_main.md`.
 
 **Typical outputs:** `data/om/neph-sag.RData`, `data/om/neph-jabba.RData`, `data/om/neph-bds.RData`, `data/TAC/neph-fct.RData`, `data/TAC/csv/neph-f.csv`.
 
@@ -31,17 +31,17 @@ This report runs the **Nephrops** workflow in three stages: **(i)** get chosen s
 
 # Introduction
 
-Functional-unit time series are aligned with ICES SAG-style inputs; surplus-production/biodyn-style OMs support JABBA fitting and TAC scenarios. The three stages below match the pelagic/demersal reports; interpretive discussion belongs in `00_report.Rmd`.
+Functional-unit time series are aligned with ICES SAG-style inputs; surplus-production/biodyn-style OMs support JABBA fitting and TAC scenarios. The three stages below match the pelagic/demersal reports; interpretive discussion belongs in `docs/report_main.md`.
 
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(warning = FALSE, message = FALSE)
-options(warn = -1)
+knitr::opts_chunk$set(warning = TRUE, message = TRUE, error = FALSE)
+# fail-fast: do not swallow warnings (was options(warn = -1))
 ```
 
 ```{r paths}
-source(file.path(knitr::current_input(dir = TRUE), "ensureBimResilience.R"))
+source(file.path(dirname(knitr::current_input(dir = TRUE)), "ensureBimResilience.R"))
 setupReportPaths()
 ```
 
@@ -442,6 +442,8 @@ ggNepForecastCatch=plot(ctc)+
     panel.spacing = unit(0, "lines"))
 
 ggNepForecastCatch
+
+save(ggNepForecastCatch,file="C:/active/BIM-Resilience/data/plot-objects/ggNepForecastCatch.RData")
 ```
 
 **Figure `r iFig=iFig+1; iFig`**: Catch relative to MSY for all Nephrops functional units. Values above 1 indicate catch exceeding MSY reference levels. Each panel shows a different functional unit.
@@ -505,7 +507,7 @@ save(ggPlots03Nephrops, file = file.path(dirPlot, "neph_plot_html.RData"))
 
 # Summary of results {#summary-of-results}
 
-This workflow yields per-functional-unit diagnostics, JABBA/biodyn panels, and TAC paths. Key artefacts: **`data/om/neph-jabba.RData`**, **`neph-jabba-outputs.RData`**, **`neph-bds.RData`**, **`neph_plot.RData`**, **`data/TAC/csv/neph-f.csv`**, **`neph-tac-sq.csv`**. Synthesis belongs in `report/00_report.Rmd`.
+This workflow yields per-functional-unit diagnostics, JABBA/biodyn panels, and TAC paths. Key artefacts: **`data/om/neph-jabba.RData`**, **`neph-jabba-outputs.RData`**, **`neph-bds.RData`**, **`neph_plot.RData`**, **`data/TAC/csv/neph-f.csv`**, **`neph-tac-sq.csv`**. Synthesis belongs in `docs/report_main.md`.
 
 Cross-unit interpretation, advice policy discussion, and climate or mixed-fishery context should be developed in the synthesis report rather than duplicated here.
 

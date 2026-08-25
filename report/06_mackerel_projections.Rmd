@@ -1,0 +1,249 @@
+---
+title: "Mackerel projections: recruitment, M shock, random rec"
+subtitle: "`mac.27.nea` what-ifs on top of `pel-om.RData`"
+author: "Laurence T. Kell"
+date: "`r Sys.Date()`"
+knit: (function(inputFile, encoding) { e <- new.env(); sys.source(file.path(dirname(normalizePath(inputFile)), "knit_to_report.R"), envir = e, keep.source = FALSE); e$knit_to_report(inputFile, encoding) })
+output:
+  html_document:
+    self_contained: false
+    lib_dir: "html/libs/06_mackerel"
+    toc: true
+    toc_float: true
+    code_folding: show
+---
+
+# Purpose
+
+Three illustrative projections for Northeast Atlantic mackerel
+(`mac.27.nea`), all under **status-quo F** (mean Fbar of the last three
+assessment years), starting from the bridged OM in `data/om/pel-om.RData`:
+
+1. **Recruitment levels** — constant deviance multipliers (1, 0.75, 0.5, 0.25)
+   relative to the recent residual mean.
+2. **One-off M shock** — natural mortality × 5 for a single year
+   (2035), then back to baseline M.
+3. **Random recruitment** — year-to-year lognormal noise around the recent
+   residual mean (example trajectories + median / 90% band).
+
+Tune the parameters in the chunk below, then knit or source interactively.
+Beamer panels (`fig_mac_*.png`) are exported from `report/05_figs.Rmd`.
+
+---
+
+```{r setup}
+knitr::opts_chunk$set(warning = TRUE, message = TRUE, error = FALSE, fig.width = 9, fig.height = 5)
+# fail-fast: do not swallow warnings (was options(warn = -1))
+```
+
+```{r paths}
+source(file.path(dirname(knitr::current_input(dir = TRUE)), "ensureBimResilience.R"))
+setupReportPaths()
+loadReportLibraries(extra = "ggplot2")
+```
+
+```{r params}
+sid      = "mac.27.nea"
+endYr    = 2050L
+fsqNyr   = 3L
+
+# (i) recruitment multipliers applied to recent residual mean
+recLevels = c(1, 0.75, 0.5, 0.25)
+
+# (ii) one-off M pulse
+mMul      = 5          # M × 5 for one year
+shockYear = 2035L
+
+# (iii) random recruitment
+niter     = 50L
+recSd     = NULL       # NULL → sd of historical log residuals
+seed      = 1L
+```
+
+```{r load-om}
+load(file.path(dirOM, "pel-om.RData"))
+
+stk = stks[[sid]]
+sr  = attributes(eqs[[sid]])$sr
+ftar = fsqMean(stk, n = fsqNyr)
+
+srsMac = as.data.frame(srs)
+srsMac = srsMac[srsMac$sid == "mac.27.nea", , drop = FALSE]
+recBase = exp(mean(utils::tail(srsMac$rsd, 4)))
+if (is.null(recSd)) recSd = stats::sd(srsMac$rsd, na.rm = TRUE)
+
+if (is.null(shockYear)) shockYear = dims(stk)$maxyear + 1L
+btrig = rfpts$MSYBtrigger[rfpts$sid == "mac.27.nea"][1]
+
+cat(sprintf(
+  "mac.27.nea | maxyear=%s | Fsq=%.3f | recentDev=%.3f | recSd=%.3f | M shock year=%s (x%s)\n",
+  dims(stk)$maxyear, ftar, recBase, recSd, shockYear, mMul))
+```
+
+# (i) Different recruitment levels
+
+Constant recruitment deviance = `recentDev × level`, fixed status-quo F.
+
+```{r rec-levels}
+recRuns = projectRecLevels(
+  stk, sr, ftar, recBase,
+  levels = recLevels,
+  endYr  = endYr)
+
+dfRec = macProjToDf(recRuns)
+dfRec$panel = "Recruitment levels"
+
+ggRec = ggplot(dfRec, aes(year, Catch, colour = Scenario)) +
+  geom_line(linewidth = 0.7) +
+  labs(
+    title = "Mackerel catch: different recruitment levels",
+    subtitle = sprintf("Fixed Fsq = %.3f; deviance = recentDev × level", ftar),
+    x = "Year", y = "Catch (t)") +
+  theme_bw() +
+  theme(legend.position = "bottom")
+ggRec
+```
+
+# (ii) One-off M shock
+
+Natural mortality × 5 in 2035, same F and baseline recruitment
+deviance as the no-shock run. Plot shows **catch**.
+
+```{r m-shock}
+mRuns = projectMShock(
+  stk, sr, ftar, recBase,
+  mMul      = mMul,
+  shockYear = shockYear,
+  endYr     = endYr)
+
+dfM = macProjToDf(mRuns)
+dfM$panel = "M shock"
+
+ggM = ggplot(dfM, aes(year, Catch, colour = Scenario)) +
+  geom_line(linewidth = 0.7) +
+  geom_vline(xintercept = shockYear, linetype = 3, colour = "grey50") +
+  labs(
+    title = sprintf("Mackerel catch: one-off M × %s in %s", mMul, shockYear),
+    subtitle = sprintf("Fixed Fsq = %.3f; recruitment deviance = %.3f", ftar, recBase),
+    x = "Year", y = "Catch (t)") +
+  theme_bw() +
+  theme(legend.position = "bottom")
+ggM
+```
+
+# (iii) Random recruitment noise → catch
+
+Year-to-year lognormal recruitment noise; plot shows resulting **catch**
+(median, 90% band, one example path).
+
+```{r random-rec}
+stkRand = projectRandomRec(
+  stk, sr, ftar, recBase, recSd,
+  endYr = endYr,
+  niter = niter,
+  seed  = seed)
+
+dfRand = macProjToDf(stkRand, scenarioCol = "iter")
+dfRand$panel = "Random recruitment"
+
+# Summary band + one example iteration
+summ = plyr::ddply(dfRand, "year", function(d) {
+  data.frame(
+    Catch_med = median(d$Catch),
+    Catch_lo  = as.numeric(stats::quantile(d$Catch, 0.05)),
+    Catch_hi  = as.numeric(stats::quantile(d$Catch, 0.95)))
+})
+
+exIter = "iter1"
+dfEx = subset(dfRand, iter == exIter)
+
+ggRand = ggplot(summ, aes(year)) +
+  geom_ribbon(aes(ymin = Catch_lo, ymax = Catch_hi), fill = "steelblue", alpha = 0.25) +
+  geom_line(aes(y = Catch_med), colour = "steelblue", linewidth = 0.9) +
+  geom_line(data = dfEx, aes(y = Catch), colour = "black", linewidth = 0.5) +
+  labs(
+    title = "Mackerel catch: random recruitment noise",
+    subtitle = sprintf(
+      "Fixed Fsq = %.3f; %d iters; ribbon = 5–95%% catch; black = %s",
+      ftar, niter, exIter),
+    x = "Year", y = "Catch (t)") +
+  theme_bw()
+ggRand
+```
+
+# Save outputs
+
+```{r save}
+dirMac = file.path(dirTAC, "mackerel")
+dir.create(dirMac, recursive = TRUE, showWarnings = FALSE)
+dir.create(dirPlot, recursive = TRUE, showWarnings = FALSE)
+
+macProj = list(
+  params = list(
+    sid = sid, endYr = endYr, ftar = ftar, recBase = recBase, recSd = recSd,
+    recLevels = recLevels, mMul = mMul, shockYear = shockYear,
+    niter = niter, seed = seed),
+  recLevels = recRuns,
+  mShock    = mRuns,
+  randomRec = stkRand,
+  dfRec = dfRec,
+  dfM   = dfM,
+  dfRand = dfRand,
+  summRand = summ)
+
+save(macProj, file = file.path(dirOM, "mac-proj.RData"))
+
+write.csv(dfRec,  file.path(dirMac, "mac-rec-levels.csv"), row.names = FALSE)
+write.csv(dfM,    file.path(dirMac, "mac-m-shock.csv"),    row.names = FALSE)
+write.csv(summ,   file.path(dirMac, "mac-random-rec-summary.csv"), row.names = FALSE)
+
+ggsave(file.path(dirPlot, "ggMacRecLevels.png"),  ggRec,  width = 8, height = 5)
+ggsave(file.path(dirPlot, "ggMacMShock.png"),     ggM,    width = 8, height = 5)
+ggsave(file.path(dirPlot, "ggMacRandomRec.png"),  ggRand, width = 8, height = 5)
+
+# Backup 2×2 panels: Catch, SSB, Recruits, F
+dirMacBackup = file.path(dirReport, "beamer", "backup")
+dir.create(dirMacBackup, recursive = TRUE, showWarnings = FALSE)
+
+ggRecMetrics = plotMacMetrics(
+  dfRec,
+  title = "Mackerel: recruitment levels",
+  subtitle = sprintf("Fixed Fsq = %.3f; Catch / SSB / Recruits / F", ftar))
+ggMMetrics = plotMacMetrics(
+  dfM,
+  title = sprintf("Mackerel: M × %s in %s", mMul, shockYear),
+  subtitle = sprintf("Fixed Fsq = %.3f; Catch / SSB / Recruits / F", ftar),
+  vline = shockYear)
+ggRandMetrics = plotMacMetricsStochastic(
+  dfRand,
+  title = "Mackerel: random recruitment noise",
+  subtitle = sprintf(
+    "Fixed Fsq = %.3f; %d iters; ribbon = 5–95%%; black = %s",
+    ftar, niter, exIter))
+
+ggsave(file.path(dirMacBackup, "mac_rec_levels_metrics.png"), ggRecMetrics,
+       width = 10, height = 8)
+ggsave(file.path(dirMacBackup, "mac_mshock_metrics.png"), ggMMetrics,
+       width = 10, height = 8)
+ggsave(file.path(dirMacBackup, "mac_random_rec_metrics.png"), ggRandMetrics,
+       width = 10, height = 8)
+ggsave(file.path(dirPlot, "mac_rec_levels_metrics.png"), ggRecMetrics,
+       width = 10, height = 8)
+ggsave(file.path(dirPlot, "mac_mshock_metrics.png"), ggMMetrics,
+       width = 10, height = 8)
+ggsave(file.path(dirPlot, "mac_random_rec_metrics.png"), ggRandMetrics,
+       width = 10, height = 8)
+```
+
+## Summary
+
+| Scenario | What varies | Held fixed | Beamer | Backup |
+|----------|-------------|------------|--------|--------|
+| Recruitment levels | Constant deviance multiplier | Fsq, M | Catch | Catch/SSB/Rec/F |
+| M shock | M × `r mMul` in `r shockYear` only | Fsq, baseline deviance | Catch | Catch/SSB/Rec/F |
+| Random recruitment | Year-to-year lognormal noise | Fsq, mean deviance | Catch | Catch/SSB/Rec/F |
+
+Artefacts: `data/om/mac-proj.RData`, `data/TAC/mackerel/*.csv`,
+`data/plot-objects/`, `report/beamer/backup/mac_*_metrics.png`.
+
+Beamer catch panels (`fig_mac_*.png`) are written by `report/05_figs.Rmd`.

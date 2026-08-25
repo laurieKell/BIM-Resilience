@@ -26,5 +26,26 @@
 /report/latex/qa_report.txt
 /report/latex/takeaways.csv
 
+# Beamer build artefacts (keep .tex / .png / .pdf of decks)
+/report/beamer/*.aux
+/report/beamer/*.log
+/report/beamer/*.nav
+/report/beamer/*.out
+/report/beamer/*.snm
+/report/beamer/*.toc
+/report/beamer/*.synctex.gz
+/report/beamer/*~
+/report/beamer/backup/
+
+# Local Word review copies (not the runnable pipeline)
+/report/Final Report/
+/report/*.docx
+fsp100.pdf
+
 # Optional local caches
 *.Rcheck/
+
+*.pptx
+report/mackerel.txt
+report/latex/beamer/
+

@@ -1,0 +1,423 @@
+---
+title: "Beamer figures: biological simulations"
+subtitle: "Exports PNG panels for `report/beamer/biological_simulations_slides.tex`"
+author: "Laurence T. Kell"
+date: "`r Sys.Date()`"
+# Knit → HTML under report/html/. For PDF/Word see report/knit_to_report.R
+# (knit_to_report(..., format = "pdf"|"docx") or render_report(...)).
+knit: (function(inputFile, encoding) { e <- new.env(); sys.source(file.path(dirname(normalizePath(inputFile)), "knit_to_report.R"), envir = e, keep.source = FALSE); e$knit_to_report(inputFile, encoding) })
+output:
+  html_document:
+    self_contained: false
+    lib_dir: "html/libs/05_figs"
+    toc: true
+    toc_float: true
+    code_folding: show
+  pdf_document:
+    toc: true
+    number_sections: true
+    fig_caption: true
+  word_document:
+    toc: true
+---
+
+# Purpose
+
+Build the figures used in the biological-simulations Beamer deck
+(`report/beamer/`). PNGs are written next to the `.tex` file.
+
+- **fig1--fig3**: SAG retrospectives (blueMarine)
+- **fig4--fig6**: pelagic / demersal / Nephrops forecasts (`data/plot-objects/`)
+- **fig_mac_***: mackerel what-ifs from `pel-om.RData` (recruitment levels,
+  M shock, random recruitment)
+
+---
+
+```{r setup}
+knitr::opts_chunk$set(warning = TRUE, message = TRUE, error = FALSE)
+# fail-fast: do not swallow warnings (was options(warn = -1))
+```
+
+```{r paths}
+source(file.path(dirname(knitr::current_input(dir = TRUE)), "ensureBimResilience.R"))
+setupReportPaths()
+loadReportLibraries(extra = "ggplot2")
+
+dirBeamer = file.path(dirReport, "beamer")
+dir.create(dirBeamer, recursive = TRUE, showWarnings = FALSE)
+
+# SAG snapshot lives in blueMarine (override with BLUEMARINE_DATA if needed).
+dirBlueMarine = Sys.getenv(
+  "BLUEMARINE_DATA",
+  unset = "C:/active/blueMarine/data")
+```
+
+```{r libs}
+library(ggplot2)
+```
+
+```{r themes}
+order_stock_names = function(d, stocks, col = "name") {
+  d[[col]] = factor(d[[col]], levels = stock_name_levels(stocks))
+  d
+}
+
+stock_name_levels = function(stocks) as.character(stocks$name)
+
+# Greyscale ramp over assessment years (light → dark).
+retro_pal = function(years, cols = c("grey75", "black")) {
+  yrs = sort(unique(years))
+  setNames(colorRampPalette(cols)(length(yrs)), yrs)
+}
+
+theme_beamer_ck = function(base_size = 16, base_family = "sans") {
+  theme_bw(base_size = base_size, base_family = base_family) +
+    theme(
+      plot.background   = element_rect(fill = "transparent", colour = NA),
+      panel.background  = element_rect(fill = "white", colour = NA),
+      legend.background = element_rect(fill = "transparent", colour = NA),
+      legend.key        = element_rect(fill = "transparent", colour = NA),
+      panel.grid.minor  = element_blank(),
+      panel.grid.major  = element_line(colour = "grey88", linewidth = 0.3),
+      panel.border      = element_rect(colour = "grey50", fill = NA, linewidth = 0.4),
+      strip.background  = element_rect(fill = "grey85", colour = NA),
+      strip.text        = element_text(
+        face = "bold", size = rel(1.0), margin = margin(3, 3, 3, 3)),
+      axis.title        = element_text(face = "bold", size = rel(1.05)),
+      axis.text         = element_text(size = rel(0.9), colour = "grey20"),
+      axis.ticks        = element_line(colour = "grey50", linewidth = 0.3),
+      axis.text.y       = element_blank(),
+      plot.title        = element_text(face = "bold", size = rel(1.15), hjust = 0),
+      plot.subtitle     = element_text(size = rel(0.95), colour = "grey30"),
+      legend.position   = "none",
+      legend.title      = element_text(face = "bold", size = rel(0.95)),
+      legend.text       = element_text(size = rel(0.9)),
+      plot.margin       = margin(4, 8, 4, 4))
+}
+
+theme_set(theme_beamer_ck())
+
+# Advice panels: stock name as a top strip (not a bulky left column),
+# with readable y-scales. Does not inherit axis.text.y = blank from theme_beamer_ck.
+theme_advice_panel = function(base_size = 12) {
+  theme_bw(base_size = base_size) +
+    theme(
+      plot.background   = element_rect(fill = "white", colour = NA),
+      panel.background  = element_rect(fill = "white", colour = NA),
+      legend.position   = "none",
+      panel.grid.minor  = element_blank(),
+      panel.grid.major  = element_line(colour = "grey92", linewidth = 0.25),
+      panel.border      = element_rect(colour = "grey55", fill = NA, linewidth = 0.35),
+      panel.spacing.y   = unit(8, "pt"),
+      strip.background  = element_rect(fill = "white", colour = NA),
+      strip.text        = element_text(
+        face = "bold", size = rel(1.1), hjust = 0, colour = "grey10",
+        margin = margin(t = 2, b = 2)),
+      strip.placement   = "outside",
+      axis.title        = element_text(face = "bold", size = rel(0.95)),
+      axis.title.y      = element_text(margin = margin(r = 4)),
+      axis.text         = element_text(size = rel(0.78), colour = "grey25"),
+      axis.ticks        = element_line(colour = "grey55", linewidth = 0.25),
+      plot.margin       = margin(4, 8, 4, 6))
+}
+
+# Compact y labels for absolute biomass; plain decimals for ratios.
+.label_ssb_abs = function(x) {
+  vapply(x, function(z) {
+    if (is.na(z)) return(NA_character_)
+    if (abs(z) >= 1e6) sprintf("%.1fM", z / 1e6)
+    else if (abs(z) >= 1e3) sprintf("%.0fk", z / 1e3)
+    else sprintf("%.2g", z)
+  }, character(1))
+}
+
+# Retrospective SSB (or SSB/Btrigger) by stock × assessment year.
+plot_advice_ssb = function(d, pal, y = "ssb", ylab = "SSB",
+                           xlim = c(1980, 2025), hline = NULL,
+                           anchor = NULL, status_bands = FALSE,
+                           band_at = 1) {
+  p = ggplot(d, aes(year, .data[[y]], group = assYr, colour = factor(assYr)))
+  if (!is.null(anchor)) {
+    p = p + geom_blank(data = anchor, aes(year, ssb), inherit.aes = FALSE)
+  }
+  # Colourblind-safe bands (Okabe–Ito): blue = carry on (>1), orange = reduce (<1).
+  if (isTRUE(status_bands)) {
+    p = p +
+      geom_rect(
+        xmin = -Inf, xmax = Inf, ymin = band_at, ymax = Inf,
+        fill = "#56B4E9", alpha = 0.07, inherit.aes = FALSE) +
+      geom_rect(
+        xmin = -Inf, xmax = Inf, ymin = -Inf, ymax = band_at,
+        fill = "#E69F00", alpha = 0.07, inherit.aes = FALSE)
+  }
+  if (!is.null(hline)) {
+    p = p + geom_hline(
+      yintercept = hline, colour = "grey20", linetype = 2, linewidth = 0.7)
+  }
+
+  y_scale = if (identical(y, "ssb_rel")) {
+    scale_y_continuous()
+  } else {
+    scale_y_continuous(labels = .label_ssb_abs)
+  }
+
+  p +
+    geom_line(linewidth = 0.55, alpha = 0.9) +
+    facet_wrap(~name, ncol = 1, scales = "free_y", strip.position = "top") +
+    y_scale +
+    coord_cartesian(xlim = xlim) +
+    scale_colour_manual(values = pal) +
+    labs(x = NULL, y = ylab) +
+    theme_advice_panel()
+}
+
+save_beamer_fig = function(plot, name, width, height) {
+  ggsave(
+    filename = file.path(dirBeamer, name),
+    plot     = plot,
+    width    = width,
+    height   = height)
+}
+```
+
+```{r data}
+load(file.path(dirBlueMarine, "interim", "sag_stocks.RData"))
+load(file.path(dirBlueMarine, "results", "stock_summary.RData"))
+```
+
+```{r sag-ssb, fig.height=10, fig.width=10}
+ts_plot = merge(
+  sag$ts,
+  stock_summary$stocks[, c("sid", "name")],
+  by.x = ".id", by.y = "sid")
+ts_plot = merge(ts_plot, sag$rfpts, by = c(".id", "assYr"))
+ts_plot = order_stock_names(
+  subset(ts_plot, is.finite(ssb)),
+  stock_summary$stocks)
+
+# Single stock order for fig1--fig3 (do not let subset/anchor drop levels).
+stock_order = levels(ts_plot$name)
+
+pal = retro_pal(ts_plot$assYr)
+
+d1 = subset(ts_plot, assYr %in% 2016:2021)
+d2 = subset(ts_plot, year >= 1980 & assYr %in% 2016:2026)
+d1$name = factor(as.character(d1$name), levels = stock_order)
+d2$name = factor(as.character(d2$name), levels = stock_order)
+
+# Shared per-stock y-range so fig1 and fig2 are comparable.
+combo = rbind(d1, d2)
+rng = do.call(
+  rbind,
+  lapply(split(combo$ssb, factor(combo$name, levels = stock_order)),
+         range, na.rm = TRUE))
+rng = data.frame(
+  name = factor(rownames(rng), levels = stock_order),
+  ymin = rng[, 1],
+  ymax = rng[, 2],
+  row.names = NULL)
+
+anchor = data.frame(
+  year = 1980,
+  ssb  = c(rng$ymin, rng$ymax),
+  name = factor(rep(as.character(rng$name), 2), levels = stock_order))
+
+d2$ssb_rel = d2$ssb / d2$msybtrigger
+d3 = d2[is.finite(d2$ssb_rel), , drop = FALSE]
+d3$name = factor(as.character(d3$name), levels = stock_order)
+
+p1 = plot_advice_ssb(d1, pal, anchor = anchor)
+p2 = plot_advice_ssb(d2, pal, anchor = anchor)
+p3 = plot_advice_ssb(
+  d3, pal,
+  y            = "ssb_rel",
+  ylab         = expression(SSB / B[trigger]),
+  hline        = 1,
+  status_bands = TRUE)
+
+p1
+p2
+p3
+
+save_beamer_fig(p1, "fig1.png", width = 8, height = 8.2)
+save_beamer_fig(p2, "fig2.png", width = 8, height = 8.2)
+save_beamer_fig(p3, "fig3.png", width = 8, height = 8.2)
+```
+
+```{r pel-1}
+load(file.path(dirPlot, "ggPelForecas.RData"))
+
+p4 = ggPelForecast + theme_beamer_ck() + xlab("Year")
+p4
+save_beamer_fig(p4, "fig4.png", width = 8, height = 4)
+```
+
+```{r dem-1}
+load(file.path(dirPlot, "ggDemForecas.RData"))
+
+p5 = ggDemForecast + theme_beamer_ck() + xlab("Year")
+p5
+save_beamer_fig(p5, "fig5.png", width = 8, height = 8)
+```
+
+```{r nep}
+load(file.path(dirPlot, "ggNepForecastCatch.RData"))
+
+p6 = ggNepForecastCatch + facet_wrap(~qname,ncol=2) + theme_beamer_ck() + xlab("Year")
+p6
+save_beamer_fig(p6, "fig6.png", width = 8, height = 8)
+```
+
+# Mackerel scenarios (fig_mac_*)
+
+Status-quo F projections for `mac.27.nea`: catch under recruitment-level
+shocks, a one-off M shock (×5 in 2035), and random recruitment noise.
+All Beamer panels plot **catch** (not recruits). Helpers: `R/macProjections.R`.
+
+```{r mac-params}
+macSid      = "mac.27.nea"
+macEndYr    = 2050L
+macRecLevels = c(1, 0.75, 0.5, 0.25)
+macMMul     = 5
+macShockYr  = 2035L
+macNiter    = 50L
+macSeed     = 1L
+
+# Catch panels need a visible y-axis (theme_beamer_ck hides axis.text.y).
+theme_mac_catch = function(base_size = 12) {
+  theme_beamer_ck(base_size = base_size) +
+    theme(
+      axis.text.y     = element_text(size = rel(0.85), colour = "grey20"),
+      axis.title.y    = element_text(face = "bold", size = rel(1.05)),
+      legend.position = "bottom")
+}
+```
+
+```{r mac-om}
+load(file.path(dirOM, "pel-om.RData"))
+
+macStk  = stks[[macSid]]
+macSr   = attributes(eqs[[macSid]])$sr
+macFtar = fsqMean(macStk, n = 3L)
+
+srsMac = as.data.frame(srs)
+srsMac = srsMac[srsMac$sid == macSid, , drop = FALSE]
+macRecBase = exp(mean(utils::tail(srsMac$rsd, 4)))
+macRecSd   = stats::sd(srsMac$rsd, na.rm = TRUE)
+```
+
+```{r mac-rec, fig.width=8, fig.height=5}
+macRecRuns = projectRecLevels(
+  macStk, macSr, macFtar, macRecBase,
+  levels = macRecLevels,
+  endYr  = macEndYr)
+dfMacRec = macProjToDf(macRecRuns)
+
+ggMacRec = ggplot(dfMacRec, aes(year, Catch, colour = Scenario)) +
+  geom_line(linewidth = 0.7) +
+  labs(
+    title = "Mackerel catch: different recruitment levels",
+    subtitle = sprintf(
+      "Fixed Fsq = %.3f; recruitment deviance = recentDev × level", macFtar),
+    x = "Year", y = "Catch (t)") +
+  theme_mac_catch()
+ggMacRec
+save_beamer_fig(ggMacRec, "fig_mac_rec.png", width = 8, height = 5)
+```
+
+```{r mac-mshock, fig.width=8, fig.height=5}
+macMRuns = projectMShock(
+  macStk, macSr, macFtar, macRecBase,
+  mMul      = macMMul,
+  shockYear = macShockYr,
+  endYr     = macEndYr)
+dfMacM = macProjToDf(macMRuns)
+
+ggMacM = ggplot(dfMacM, aes(year, Catch, colour = Scenario)) +
+  geom_line(linewidth = 0.7) +
+  geom_vline(xintercept = macShockYr, linetype = 3, colour = "grey50") +
+  labs(
+    title = sprintf("Mackerel catch: one-off M × %s in %s", macMMul, macShockYr),
+    subtitle = sprintf(
+      "Fixed Fsq = %.3f; recruitment deviance = %.3f", macFtar, macRecBase),
+    x = "Year", y = "Catch (t)") +
+  theme_mac_catch()
+ggMacM
+save_beamer_fig(ggMacM, "fig_mac_mshock.png", width = 8, height = 5)
+```
+
+```{r mac-rand, fig.width=8, fig.height=5}
+macRand = projectRandomRec(
+  macStk, macSr, macFtar, macRecBase, macRecSd,
+  endYr = macEndYr,
+  niter = macNiter,
+  seed  = macSeed)
+dfMacRand = macProjToDf(macRand, scenarioCol = "iter")
+
+macSumm = plyr::ddply(dfMacRand, "year", function(d) {
+  data.frame(
+    Catch_med = median(d$Catch),
+    Catch_lo  = as.numeric(stats::quantile(d$Catch, 0.05)),
+    Catch_hi  = as.numeric(stats::quantile(d$Catch, 0.95)))
+})
+macEx = dfMacRand[dfMacRand$iter == "iter1", , drop = FALSE]
+
+ggMacRand = ggplot(macSumm, aes(year)) +
+  geom_ribbon(
+    aes(ymin = Catch_lo, ymax = Catch_hi),
+    fill = "steelblue", alpha = 0.25) +
+  geom_line(aes(y = Catch_med), colour = "steelblue", linewidth = 0.9) +
+  geom_line(data = macEx, aes(y = Catch), colour = "black", linewidth = 0.5) +
+  labs(
+    title = "Mackerel catch: random recruitment noise",
+    subtitle = sprintf(
+      "Fixed Fsq = %.3f; %d iters; ribbon = 5–95%% catch; black = iter1",
+      macFtar, macNiter),
+    x = "Year", y = "Catch (t)") +
+  theme_mac_catch()
+ggMacRand
+save_beamer_fig(ggMacRand, "fig_mac_rand.png", width = 8, height = 5)
+```
+
+## Backup metric panels (Catch, SSB, Recruits, F)
+
+2×2 panels for each scenario family, written under `report/beamer/backup/`
+(and `data/plot-objects/`). Beamer deck still uses the catch-only slides above.
+
+```{r mac-backup-metrics, fig.width=10, fig.height=8}
+dirMacBackup = file.path(dirBeamer, "backup")
+dir.create(dirMacBackup, recursive = TRUE, showWarnings = FALSE)
+dir.create(dirPlot, recursive = TRUE, showWarnings = FALSE)
+
+save_mac_backup = function(plot, stem) {
+  ggsave(file.path(dirMacBackup, paste0(stem, ".png")), plot,
+         width = 10, height = 8)
+  ggsave(file.path(dirPlot, paste0(stem, ".png")), plot,
+         width = 10, height = 8)
+  plot
+}
+
+ggMacRecMetrics = plotMacMetrics(
+  dfMacRec,
+  title = "Mackerel: recruitment levels",
+  subtitle = sprintf("Fixed Fsq = %.3f; Catch / SSB / Recruits / F", macFtar))
+ggMacRecMetrics
+save_mac_backup(ggMacRecMetrics, "mac_rec_levels_metrics")
+
+ggMacMMetrics = plotMacMetrics(
+  dfMacM,
+  title = sprintf("Mackerel: M × %s in %s", macMMul, macShockYr),
+  subtitle = sprintf("Fixed Fsq = %.3f; Catch / SSB / Recruits / F", macFtar),
+  vline = macShockYr)
+ggMacMMetrics
+save_mac_backup(ggMacMMetrics, "mac_mshock_metrics")
+
+ggMacRandMetrics = plotMacMetricsStochastic(
+  dfMacRand,
+  title = "Mackerel: random recruitment noise",
+  subtitle = sprintf(
+    "Fixed Fsq = %.3f; %d iters; ribbon = 5–95%%; black = iter1",
+    macFtar, macNiter))
+ggMacRandMetrics
+save_mac_backup(ggMacRandMetrics, "mac_random_rec_metrics")
+```

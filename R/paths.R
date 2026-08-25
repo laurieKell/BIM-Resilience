@@ -48,7 +48,8 @@ findProjectRoot = function(start = NULL) {
 #' Typical Rmd setup (no hardcoded path):
 #'
 #' \preformatted{
-#' source(file.path(knitr::current_input(dir = TRUE), "ensureBimResilience.R"))
+#' source(file.path(dirname(knitr::current_input(dir = TRUE)),
+#'                  "ensureBimResilience.R"))
 #' setupReportPaths()
 #' loadReportLibraries()   # does not re-attach bimResilience
 #' }

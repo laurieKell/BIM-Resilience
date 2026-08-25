@@ -1,0 +1,78 @@
+---
+title: "BIM Resilience — analysis overview"
+subtitle: "Pipeline entry point and reproducibility checklist"
+author: "Laurence T. Kell"
+date: "`r Sys.Date()`"
+knit: (function(inputFile, encoding) { e <- new.env(); sys.source(file.path(dirname(normalizePath(inputFile)), "knit_to_report.R"), envir = e, keep.source = FALSE); e$knit_to_report(inputFile, encoding) })
+output:
+  html_document:
+    self_contained: false
+    lib_dir: "html/libs/00_overview"
+    toc: true
+    toc_float: true
+    code_folding: show
+---
+
+```{r setup}
+knitr::opts_chunk$set(warning = TRUE, message = TRUE, error = FALSE)
+source(file.path(dirname(knitr::current_input(dir = TRUE)), "ensureBimResilience.R"))
+setupReportPaths()
+loadReportLibraries()
+```
+
+# Purpose
+
+This notebook is the **entry point** for the biological-simulation pipeline. It does not run projections; it documents order, inputs, and how to regenerate products for the report, beamer, and CREST.
+
+Full narrative: `docs/report_main.md`. Executive briefing: `docs/executive_summary.md`. Step I/O: `docs/WORKFLOW.md`.
+
+# Pipeline (run in order)
+
+| Step | Notebook / script | Role |
+|------|-------------------|------|
+| 0 | `00_overview.Rmd` (this file) | Orientation |
+| 1 | `01_pelagics.Rmd` | Pelagic OMs + TAC scenarios → `pel-f.csv` |
+| 2 | `02_demersal.Rmd` | Demersal OMs + TAC scenarios → `dem-f.csv` |
+| 3 | `03_nephrops.Rmd` | Nephrops JABBA / biodyn + harvest scenarios → `neph-f.csv` |
+| 4 | `04_iccat.Rmd` | NA albacore SS3 OM + recruitment scales → `iccat-f.csv` |
+| 5 | `05_figs.Rmd` | Shared / presentation figures |
+| 6 | `06_mackerel_projections.Rmd` | Mackerel what-ifs (rec levels, M shock, random rec) |
+| 7 | `finalise/00_run_all.R` | Stage figs, QA CSVs, takeaways, LaTeX appendix PDF |
+
+```r
+# From project root, after steps 1–4 (and optionally 5–6):
+source("report/finalise/00_run_all.R")
+runAll(render = FALSE)   # set TRUE to re-knit stock-group Rmds
+```
+
+# Reproducible load
+
+```{r paths-check}
+stopifnot(nzchar(projectRoot), dir.exists(file.path(projectRoot, "R")))
+cat("Project root:", projectRoot, "\n")
+cat("OM dir:      ", dirOM, "\n")
+cat("TAC dir:     ", dirTAC, "\n")
+```
+
+Starting stocks (no local SS3/SAM required for a re-run):
+
+```{r shipped}
+pel <- loadShippedStocks("pelagics")
+dem <- loadShippedStocks("demersal")
+alb <- loadShippedStocks("iccat")
+cat("Pelagic stocks:", paste(names(pel), collapse = ", "), "\n")
+cat("Demersal stocks:", paste(names(dem), collapse = ", "), "\n")
+cat("Albacore object names:", paste(names(alb), collapse = ", "), "\n")
+```
+
+# Design in one paragraph
+
+Age-structured ICES stocks use `FLasher::fwd` under a shared control table (status-quo $F$, status-quo $F$ with recruitment $\times 0.75$ / $0.5$, $F_{\mathrm{MSY}}$, Regime). Nephrops use `mpb::fwd` with harvest-rate analogues and process-error multipliers. Albacore holds status-quo $F$ under recruitment scales 1 / 0.75 / 0.5. Horizons: 2050 (age-structured / albacore), 2041 (Nephrops). See `docs/supplementary/S1_methods.md`.
+
+# Fail-fast policy
+
+Notebooks and package helpers **stop with a clear message** when required inputs, SRRs, reference points, or figure assets are missing. Do not set `options(warn = -1)` for production knits. Prefer FLR generics (`FLCore`, `FLasher`, `FLBRP`) over one-off helpers; contribution candidates live in `flr-contrib/`.
+
+# Next
+
+Knit `01_pelagics.Rmd` through `04_iccat.Rmd`, then run `finalise/00_run_all.R`.

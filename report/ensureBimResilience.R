@@ -82,7 +82,12 @@ ensureBimResilience = function(projectRoot) {
 #' Resolve \code{report/} for knit or interactive use.
 #' @noRd
 .reportDir = function() {
-  d = tryCatch(knitr::current_input(dir = TRUE), error = function(e) NULL)
+  # knitr::current_input(dir = TRUE) returns the input *file* path (with dir),
+  # not the directory alone — wrap in dirname().
+  d = tryCatch(
+    dirname(knitr::current_input(dir = TRUE)),
+    error = function(e) NULL
+  )
   if (is.character(d) && length(d) == 1L && nzchar(d) &&
       file.exists(file.path(d, "ensureBimResilience.R")))
     return(normalizePath(d, winslash = "/"))

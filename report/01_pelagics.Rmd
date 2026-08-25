@@ -22,14 +22,13 @@ output:
 ---
 
 ```{r}
-knitr::opts_chunk$set(warning = FALSE, 
-                      message = FALSE)
+knitr::opts_chunk$set(warning = TRUE, message = TRUE, error = FALSE)
 
-options(warn=-1) 
+# fail-fast: do not swallow warnings (was options(warn = -1)) 
 ```
 
 ```{r paths}
-source(file.path(knitr::current_input(dir = TRUE), "ensureBimResilience.R"))
+source(file.path(dirname(knitr::current_input(dir = TRUE)), "ensureBimResilience.R"))
 setupReportPaths()
 ```
 
@@ -40,7 +39,7 @@ This file runs the **pelagic** workflow in three stages:
   **(ii)** update to the current year, 
   **(iii)** simulate future TACs. 
   
-Summaries and discussion are found in `report/00_report.Rmd`.
+Summaries and discussion are found in `docs/report_main.md` (see also `00_overview.Rmd`).
 
 **Principal outputs:** `data/om/pel-stks.RData`, `data/om/pel-om.RData`, `data/TAC/pel-fct.RData`, `data/TAC/csv/pel-f.csv`.
 ---
@@ -67,6 +66,9 @@ Starting FLStocks come from the packaged snapshot (`loadShippedStocks("pelagics"
 Rebuild from local SS3 / SAM / `icesdata` only when assessments change, then run
 `source("data-raw/ship_stocks.R")` to refresh `inst/extdata/`.
 
+```{r}
+print(dirIces)
+```
 
 ```{r pelagics}
 # Set TRUE to rebuild from local SS3/SAM (needs data/inputs/), then re-ship.
@@ -234,9 +236,10 @@ list2env(unpackFcstScenarios(fcstStks), envir = environment())
 historical = FLStocks(stks)
 ggPelForecast = plotForecastCatch(fct)
 print(ggPelForecast)
+save(ggPelForecast,file="C:/active/BIM-Resilience/data/plot-objects/ggPelForecas.RData")
 ```
 
-```{r forecast-save-stks, eval=FALSE, include=FALSE}
+```{r forecast-save-stks, eval=!FALSE, include=FALSE}
 pelFcstStks = c(fcstStks, list(Historical = historical))
 save(pelFcstStks, file = file.path(dirOM, "pel-fcst-stks.RData"))
 ```
@@ -271,5 +274,5 @@ saveGroupPlotBundle(
 
 ## Summary
 
-Pelagic workflow produces harmonized assessments, regime-aware recruitment diagnostics, multi-scenario short-term catch paths, SAG/advice diagnostic figures, and CSV export **`data/TAC/csv/pel-f.csv`**. Interpretation, methods narrative, and cross-stock conclusions are developed in `report/00_report.Rmd`.
+Pelagic workflow produces harmonized assessments, regime-aware recruitment diagnostics, multi-scenario short-term catch paths, SAG/advice diagnostic figures, and CSV export **`data/TAC/csv/pel-f.csv`**. Interpretation, methods narrative, and cross-stock conclusions are developed in `docs/report_main.md`.
 

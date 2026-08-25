@@ -22,14 +22,13 @@ output:
 ---
 
 ```{r}
-knitr::opts_chunk$set(warning = FALSE, 
-                      message = FALSE)
+knitr::opts_chunk$set(warning = TRUE, message = TRUE, error = FALSE)
 
-options(warn=-1) 
+# fail-fast: do not swallow warnings (was options(warn = -1)) 
 ```
 
 ```{r paths}
-source(file.path(knitr::current_input(dir = TRUE), "ensureBimResilience.R"))
+source(file.path(dirname(knitr::current_input(dir = TRUE)), "ensureBimResilience.R"))
 setupReportPaths()
 ```
 
@@ -40,7 +39,7 @@ This file runs the **demersal** workflow in three stages:
   **(ii)** update to the current year, 
   **(iii)** simulate future TACs. 
   
-Summaries and discussion are found in `report/00_report.Rmd`.
+Summaries and discussion are found in `docs/report_main.md`.
 
 **Principal outputs:** `data/om/dem-stks.RData`, `data/om/dem-om.RData`, `data/TAC/dem-fct.RData`, `data/TAC/csv/dem-f.csv`.
 ---
@@ -247,6 +246,7 @@ list2env(unpackFcstScenarios(fcstStks), envir = environment())
 historical = FLStocks(stks)
 ggDemForecast = plotForecastCatch(fct)
 print(ggDemForecast)
+save(ggDemForecast,file="C:/active/BIM-Resilience/data/plot-objects/ggDemForecas.RData")
 ```
 
 ```{r forecast-save-stks, eval=FALSE, include=FALSE}
@@ -284,5 +284,5 @@ saveGroupPlotBundle(
 
 ## Summary
 
-Demersal workflow produces harmonized assessments, regime-aware recruitment diagnostics, multi-scenario short-term catch paths, SAG/advice diagnostic figures, and CSV export **`data/TAC/csv/dem-f.csv`**. Interpretation, methods narrative, and cross-stock conclusions are developed in `report/00_report.Rmd`.
+Demersal workflow produces harmonized assessments, regime-aware recruitment diagnostics, multi-scenario short-term catch paths, SAG/advice diagnostic figures, and CSV export **`data/TAC/csv/dem-f.csv`**. Interpretation, methods narrative, and cross-stock conclusions are developed in `docs/report_main.md`.
 

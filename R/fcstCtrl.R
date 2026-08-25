@@ -51,17 +51,40 @@ buildFcstCtrl = function(sid,
 
   ctrl$recDev = ifelse(is.na(ctrl$recMul), ctrl$regime, ctrl$recentRec * ctrl$recMul)
 
+  missStk = setdiff(sid, names(stks))
+  if (length(missStk))
+    stop("buildFcstCtrl: stocks missing from 'stks': ",
+         paste(missStk, collapse = ", "), ".", call. = FALSE)
+
   fsqF = vapply(sid, function(id) {
-    stk = stks[[id]]
-    mean(fbar(stk)[, ac(dims(stk)$maxyear - seq(fsqNyr) + 1)])
+    tryCatch(
+      fsqMean(stks[[id]], n = as.integer(fsqNyr)),
+      error = function(e)
+        stop("buildFcstCtrl: status-quo F failed for '", id, "': ",
+             conditionMessage(e), call. = FALSE)
+    )
   }, numeric(1))
   names(fsqF) = sid
 
   ctrl$ftar = ifelse(ctrl$ftarRef == "FMSY", ctrl$FMSY, fsqF[ctrl$sid])
+  badFtar = !is.finite(ctrl$ftar)
+  if (any(badFtar))
+    stop("buildFcstCtrl: non-finite ftar for ",
+         paste(unique(ctrl$sid[badFtar]), collapse = ", "),
+         " (check FMSY in rfpts / Fbar history).", call. = FALSE)
+  badRec = !is.finite(ctrl$recDev)
+  if (any(badRec))
+    stop("buildFcstCtrl: non-finite recDev for ",
+         paste(unique(paste(ctrl$sid[badRec], ctrl$scenario[badRec], sep = "/")),
+               collapse = ", "),
+         " (check residuals / regime).", call. = FALSE)
   ctrl[, c("scenario", "sid", "ftar", "recDev", "endYr"), drop = FALSE]
 }
 
 #' Run forward projections from a forecast control table
+#'
+#' Uses \code{FLasher::fwd} per stock/scenario. Stops on the first missing
+#' stock, equilibrium, SRR, or non-finite control value.
 #'
 #' @param ctrl Data frame from [buildFcstCtrl()].
 #' @param stks Named FLStocks list.
@@ -69,6 +92,12 @@ buildFcstCtrl = function(sid,
 #' @return Named list of FLStocks objects, one per `scenario`.
 #' @export
 runFcstCtrl = function(ctrl, stks, eqs) {
+  need = c("scenario", "sid", "ftar", "recDev", "endYr")
+  miss = setdiff(need, names(ctrl))
+  if (length(miss))
+    stop("runFcstCtrl: 'ctrl' missing columns: ",
+         paste(miss, collapse = ", "), ".", call. = FALSE)
+
   scenarios = unique(ctrl$scenario)
   out = setNames(vector("list", length(scenarios)), scenarios)
 
@@ -79,20 +108,42 @@ runFcstCtrl = function(ctrl, stks, eqs) {
 
     for (i in seq_len(nrow(rows))) {
       row = rows[i, ]
-      stk = stks[[row$sid]]
-      sr = attributes(eqs[[row$sid]])$sr
-      yrs = ac((dims(stk)$maxyear + 1):row$endYr)
+      id = as.character(row$sid)
+      if (is.null(stks[[id]]))
+        stop("runFcstCtrl: no stock '", id, "' in scenario '", sc, "'.",
+             call. = FALSE)
+      if (is.null(eqs[[id]]))
+        stop("runFcstCtrl: no equilibrium for '", id, "'.", call. = FALSE)
+      sr = attributes(eqs[[id]])$sr
+      if (is.null(sr))
+        stop("runFcstCtrl: attributes(eqs[['", id, "']])$sr is NULL.",
+             call. = FALSE)
+      if (!is.finite(row$ftar) || !is.finite(row$recDev))
+        stop("runFcstCtrl: non-finite ftar/recDev for '", id,
+             "' in scenario '", sc, "'.", call. = FALSE)
+
+      stk = stks[[id]]
+      my = dims(stk)$maxyear
+      if (row$endYr <= my)
+        stop("runFcstCtrl: endYr (", row$endYr, ") must be > maxyear (",
+             my, ") for '", id, "'.", call. = FALSE)
+      yrs = ac((my + 1):row$endYr)
       control = fwdControl(
         year = as.numeric(yrs),
         quant = "f",
         value = rep(row$ftar, length(yrs))
       )
       devs = FLQuant(row$recDev, dimnames = list(year = yrs))
-      stocks[[row$sid]] = FLasher::fwd(
-        fwdWindow(stk, end = max(an(yrs))),
-        control = control,
-        sr = sr,
-        deviances = devs
+      stocks[[id]] = tryCatch(
+        FLasher::fwd(
+          fwdWindow(stk, end = max(an(yrs))),
+          control = control,
+          sr = sr,
+          deviances = devs
+        ),
+        error = function(e)
+          stop("runFcstCtrl: FLasher::fwd failed for '", id,
+               "' / '", sc, "': ", conditionMessage(e), call. = FALSE)
       )
     }
     out[[sc]] = FLStocks(stocks)
