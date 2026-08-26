@@ -25,6 +25,10 @@
 
 Thin wrappers that remain (`projectRecLevels`, `projectMShock`, `projectRandomRec`) only encode beamer layouts; each calls `fwdFbar`.
 
+## Prototypes vs pipeline
+
+`FLCandy` is **not** a dependency of this app. Use it only for local prototypes. Anything needed in the TAC / report pipeline belongs in **FLBacktest**, **FLRebuild**, **icesdata**, or (thin) bimResilience glue.
+
 ## Sibling apps
 
 - blueMarine: https://github.com/laurieKell/blueMarine  

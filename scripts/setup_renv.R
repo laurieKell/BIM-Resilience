@@ -20,7 +20,10 @@ github <- c(
   ggplotFL   = "flr/ggplotFL",
   FLBacktest = "laurieKell/FLBacktest",
   icesdata   = "flr/icesdata",
-  FLRebuild  = "flr/FLRebuild"
+  FLRebuild  = "flr/FLRebuild",
+  FLife      = "flr/FLife",
+  mpb        = "laurieKell/mpb",
+  mydas      = "flr/mydas"
 )
 dep_pkgs <- character()
 for (d in c("R", "report", "data-raw")) {

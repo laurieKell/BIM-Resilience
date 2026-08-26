@@ -16,10 +16,10 @@ This README is the checklist for installing and re-running on a **new PC**.
 
 | Need | Notes |
 |------|--------|
-| **R** | ≥ 4.0 (DESCRIPTION); **4.4.x recommended** (matches `renv.lock`) |
+| **R** | **4.6.1** (matches `renv.lock`; project library under `renv/library/.../R-4.6/`) |
 | **Git** | Clone from GitHub |
-| **Rtools** (Windows) | Needed to compile some FLR packages if binaries are missing |
-| **Network** | CRAN + GitHub (FLR org + `laurieKell/FLBacktest`) |
+| **Rtools** (Windows) | **Rtools45** (works with R 4.6.x) to compile FLR / TMB packages |
+| **Network** | CRAN + FLR r-universe + GitHub (`flr/*`, `laurieKell/FLBacktest`, `mpb`) |
 | **Optional** | RStudio / Positron; LaTeX (`tinytex` or MiKTeX) only if you build the appendix PDF |
 
 GitHub auth: HTTPS with a credential helper, or SSH keys for `git@github.com:...`.
@@ -67,11 +67,15 @@ remotes::install_github("laurieKell/FLBacktest")
 # FLR stack (devel FLCore often required):
 remotes::install_github(c(
   "flr/FLCore@devel", "flr/FLBRP", "flr/FLasher", "flr/ggplotFL",
-  "flr/icesdata", "flr/FLRebuild"
+  "flr/icesdata", "flr/FLRebuild", "flr/FLife",
+  "laurieKell/mpb"
 ))
 devtools::install_deps(".", dependencies = TRUE)
 ```
 
+On Windows, use **R 4.6.1** and **Rtools45**. Prefer `renv::restore()` from this repo’s lockfile once it matches your R version.
+
+`FLCandy` is **not** part of this pipeline (prototypes only); shared methods live in FLBacktest / FLRebuild / icesdata.
 ---
 
 ## 3. Smoke test
