@@ -19,11 +19,8 @@ dem <- loadShippedStocks("demersal")
 alb <- loadShippedStocks("iccat")   # list(FLStock, SRR, refpts)
 ```
 
-Rebuild those files after regenerating OMs:
-
-```r
-source("data-raw/ship_stocks.R")
-```
+Those files are maintained on the working machine and committed under
+`inst/extdata/`; a virgin clone does not rebuild them.
 
 ## What is *not* on GitHub
 

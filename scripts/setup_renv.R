@@ -26,7 +26,7 @@ github <- c(
   mydas      = "flr/mydas"
 )
 dep_pkgs <- character()
-for (d in c("R", "report", "data-raw")) {
+for (d in c("R", "report")) {
   p <- file.path(root, d)
   if (dir.exists(p))
     dep_pkgs <- c(dep_pkgs, unlist(renv::dependencies(p, quiet = TRUE)$Package))

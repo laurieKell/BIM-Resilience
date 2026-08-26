@@ -50,8 +50,8 @@ iFig = 0
 # (i) Get chosen stocks
 
 Starting albacore OM comes from the packaged snapshot (`loadShippedStocks("iccat")`).
-Rebuild from local SS3 only when the ICCAT assessment changes, then run
-`source("data-raw/ship_stocks.R")` to refresh `inst/extdata/`.
+Local SS3 rebuild (`rebuildAlbOm = TRUE`) is optional and needs a private
+`data/inputs/` tree; the virgin path keeps `rebuildAlbOm = FALSE`.
 
 ```{r data}
 sids = subset(bimSids(), fishery == "ICCAT")

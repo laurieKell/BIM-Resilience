@@ -62,8 +62,8 @@ list2env(
 # (i) Get chosen stocks
 
 Starting FLStocks come from the packaged snapshot (`loadShippedStocks("demersal")`).
-Rebuild from local SS3 / SAM / `icesdata` only when assessments change, then run
-`source("data-raw/ship_stocks.R")` to refresh `inst/extdata/`.
+Local SS3 / SAM rebuild (`rebuildDemStks = TRUE`) is optional and needs a private
+`data/inputs/` tree; the virgin path keeps `rebuildDemStks = FALSE`.
 
 
 ```{r demersals}

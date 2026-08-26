@@ -71,7 +71,7 @@ Age-structured ICES stocks use `FLasher::fwd` under a shared control table (stat
 
 # Fail-fast policy
 
-Notebooks and package helpers **stop with a clear message** when required inputs, SRRs, reference points, or figure assets are missing. Do not set `options(warn = -1)` for production knits. Prefer FLR generics (`FLCore`, `FLasher`, `FLBRP`) over one-off helpers; contribution candidates live in `flr-contrib/`.
+Notebooks and package helpers **stop with a clear message** when required inputs, SRRs, reference points, or figure assets are missing. Do not set `options(warn = -1)` for production knits. Prefer FLR generics and **FLBacktest** (`fwdFbar`, `annualise`) over one-off helpers.
 
 # Next
 

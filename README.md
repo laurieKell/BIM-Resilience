@@ -114,12 +114,12 @@ Sys.setenv(RESILIENCE_DATA = "D:/path/to/local-analysis-data")  # optional
 
 ## What is / isn’t on GitHub
 
-| On GitHub | Local only (gitignored) |
-|-----------|-------------------------|
+| On GitHub (virgin run) | Local only (gitignored) |
+|------------------------|-------------------------|
 | Starting FLStocks + `advice.csv` in `inst/extdata/` | Full SS3 / SAM under `data/inputs/` |
 | Package `R/`, report Rmds, latex/beamer **sources**, docs | Generated `data/om/`, `data/TAC/`, `data/plot-objects/` |
 | `scripts/setup_renv.R`, `renv.lock` | Knit HTML/PDF/docx, `report/cache/`, beamer PDFs, Word copies |
-| | `scripts/_local/` (one-shot migrate helpers) |
+| | `scripts/_local/` (maintainer helpers: old `data-raw/`, `flr-contrib/`, …) |
 
 SAG time series are **downloaded** via `icesSAG` when you knit (unless you place a local sdGraphs cache under `data/inputs/`).
 
@@ -142,9 +142,8 @@ See [`data/README.md`](data/README.md).
 
 ## Design rules (short)
 
-- Prefer **FLBacktest** / FLR generics over new helpers — [`docs/app_vs_package.md`](docs/app_vs_package.md).
+- Prefer **FLBacktest** / FLR generics over one-off helpers — [`docs/app_vs_package.md`](docs/app_vs_package.md).
 - Fail fast: do not set `options(warn = -1)` for production knits.
-- Rebuild packaged stocks from local assessments only when needed: `source("data-raw/ship_stocks.R")` (maintainer path; needs local SS3/SAM).
 
 ### Refreshing `renv.lock` (working machine only)
 

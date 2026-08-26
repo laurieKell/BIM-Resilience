@@ -45,9 +45,13 @@
 /report/*.docx
 fsp100.pdf
 
-# One-shot / local scripts
+# One-shot / local / maintainer-only (not on GitHub; virgin run uses inst/extdata/)
 /scripts/_local/
 /scripts/*.log
+/data-raw/
+/flr-contrib/
+/man-src/
+/report/wip/
 
 # Optional local caches
 *.Rcheck/
@@ -64,3 +68,7 @@ renv/sandbox/
 renv/python/
 renv/settings.d/
 renv/.gitignore
+
+# Editor / accidental artefacts
+*.tex~*
+

@@ -22,7 +22,7 @@ shippedStocksPath = function(group = c("pelagics", "demersal", "iccat")) {
     hit = candidates[file.exists(candidates)]
     if (!length(hit))
       stop("Shipped stock file not found: ", fname,
-           ". Run data-raw/ship_stocks.R then reinstall / load_all.",
+           ". Restore inst/extdata/ from the GitHub clone, then load_all().",
            call. = FALSE)
     path = normalizePath(hit[1], winslash = "/", mustWork = TRUE)
   }
