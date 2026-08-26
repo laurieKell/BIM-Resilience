@@ -3,9 +3,10 @@
 #' Call after sourcing \code{R/paths.R} and \code{load_app()} (or
 #' \code{setupReportPaths()}).
 loadReportLibraries = function(extra = character()) {
-  required = c("FLCore", "FLasher", "FLBRP", "FLBacktest", "plyr", "dplyr")
+  required = c("FLCore", "FLasher", "FLBRP", "FLBacktest", "icesdata",
+               "plyr", "dplyr")
   optional = c(
-    "FLRebuild", "ggplotFL", "icesdata", "icesSAG",
+    "FLRebuild", "ggplotFL", "icesSAG",
     "FLfse", "stockassessment", "r4ss", "ss3om",
     "xtable", "reshape",
     extra

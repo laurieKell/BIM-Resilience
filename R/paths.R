@@ -86,7 +86,6 @@ resiliencePaths = function(projectRoot = NULL, dataRoot = NULL) {
 #' Source all app helpers under \code{R/} (order: paths already loaded).
 load_app = function(root = bm_root()) {
   files = c(
-    "sids.R",
     "shippedData.R",
     "sagInputs.R",
     "reportLibs.R",
