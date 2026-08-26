@@ -23,7 +23,7 @@ output:
 
 # Purpose
 
-This report runs the **ICCAT albacore** workflow in three stages: **(i)** get the chosen stock (`alb-n`), **(ii)** update with advice catches, **(iii)** simulate future TACs. Methods and multi-stock discussion belong in `docs/report_main.md`.
+This report runs the **ICCAT albacore** workflow in three stages: **(i)** get the chosen stock (`alb-n`), **(ii)** update with advice catches, **(iii)** simulate future TACs.
 
 **Outputs:** **`alb_plot.RData`**, **`iccat-fct.RData`**, **`csv/iccat-f.csv`**.
 
@@ -242,4 +242,4 @@ save(ggPlots04Iccat, file=file.path(dirReport, "figs", "alb_plot_html.RData"))
 
 ## Summary
 
-Albacore workflow produces SS3-conditioned diagnostics, recruitment residual plot, recruitment-scaled forward projections, **`data/TAC/csv/iccat-f.csv`** (deterministic scenarios), and packaged ggplot lists for `docs/report_main.md`.
+Albacore workflow produces SS3-conditioned diagnostics, recruitment residual plot, recruitment-scaled forward projections, and **`data/TAC/csv/iccat-f.csv`** (deterministic scenarios).

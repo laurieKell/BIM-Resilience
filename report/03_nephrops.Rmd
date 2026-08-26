@@ -23,7 +23,7 @@ output:
 
 # Purpose {#purpose}
 
-This report runs the **Nephrops** workflow in three stages: **(i)** get chosen stocks (SAG / functional units), **(ii)** update to the current year (JABBA / biodyn conditioning), **(iii)** simulate future TACs. Methods and synthesis belong in `docs/report_main.md`.
+This report runs the **Nephrops** workflow in three stages: **(i)** get chosen stocks (SAG / functional units), **(ii)** update to the current year (JABBA / biodyn conditioning), **(iii)** simulate future TACs.
 
 **Typical outputs:** `data/om/neph-sag.RData`, `data/om/neph-jabba.RData`, `data/om/neph-bds.RData`, `data/TAC/neph-fct.RData`, `data/TAC/csv/neph-f.csv`.
 
@@ -31,7 +31,7 @@ This report runs the **Nephrops** workflow in three stages: **(i)** get chosen s
 
 # Introduction
 
-Functional-unit time series are aligned with ICES SAG-style inputs; surplus-production/biodyn-style OMs support JABBA fitting and TAC scenarios. The three stages below match the pelagic/demersal reports; interpretive discussion belongs in `docs/report_main.md`.
+Functional-unit time series are aligned with ICES SAG-style inputs; surplus-production/biodyn-style OMs support JABBA fitting and TAC scenarios. The three stages below match the pelagic/demersal reports.
 
 ---
 
@@ -507,7 +507,7 @@ save(ggPlots03Nephrops, file = file.path(dirPlot, "neph_plot_html.RData"))
 
 # Summary of results {#summary-of-results}
 
-This workflow yields per-functional-unit diagnostics, JABBA/biodyn panels, and TAC paths. Key artefacts: **`data/om/neph-jabba.RData`**, **`neph-jabba-outputs.RData`**, **`neph-bds.RData`**, **`neph_plot.RData`**, **`data/TAC/csv/neph-f.csv`**, **`neph-tac-sq.csv`**. Synthesis belongs in `docs/report_main.md`.
+This workflow yields per-functional-unit diagnostics, JABBA/biodyn panels, and TAC paths. Key artefacts: **`data/om/neph-jabba.RData`**, **`neph-jabba-outputs.RData`**, **`neph-bds.RData`**, **`neph_plot.RData`**, **`data/TAC/csv/neph-f.csv`**, **`neph-tac-sq.csv`**.
 
 Cross-unit interpretation, advice policy discussion, and climate or mixed-fishery context should be developed in the synthesis report rather than duplicated here.
 

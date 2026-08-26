@@ -39,7 +39,7 @@ This file runs the **pelagic** workflow in three stages:
   **(ii)** update to the current year, 
   **(iii)** simulate future TACs. 
   
-Summaries and discussion are found in `docs/report_main.md` (see also `00_overview.Rmd`).
+Summaries and discussion are developed after the TAC CSVs are produced.
 
 **Principal outputs:** `data/om/pel-stks.RData`, `data/om/pel-om.RData`, `data/TAC/pel-fct.RData`, `data/TAC/csv/pel-f.csv`.
 ---
@@ -274,5 +274,5 @@ saveGroupPlotBundle(
 
 ## Summary
 
-Pelagic workflow produces harmonized assessments, regime-aware recruitment diagnostics, multi-scenario short-term catch paths, SAG/advice diagnostic figures, and CSV export **`data/TAC/csv/pel-f.csv`**. Interpretation, methods narrative, and cross-stock conclusions are developed in `docs/report_main.md`.
+Pelagic workflow produces harmonized assessments, regime-aware recruitment diagnostics, multi-scenario short-term catch paths, SAG/advice diagnostic figures, and CSV export **`data/TAC/csv/pel-f.csv`**.
 

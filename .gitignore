@@ -4,15 +4,13 @@
 .RData
 .Ruserdata
 *.html
+*.Rproj
 
-# Local analysis workspace (~hundreds of MB: SS3, SAM, OM, TAC caches).
-# Layout is documented in data/README.md. Package ships starting FLStocks in
-# inst/extdata/ instead.
+# Analysis outputs (writable at runtime; not on GitHub)
 /data/**
-!/data/README.md
 !/data/.gitignore
 
-# Knit / LaTeX products (sources under report/ stay tracked)
+# Knit / LaTeX products (sources under report/latex/*.tex stay tracked)
 /report/html/
 /report/pdf/
 /report/docx/
@@ -27,36 +25,32 @@
 /report/latex/qa_report.txt
 /report/latex/takeaways.csv
 /report/latex/beamer/
+/report/latex/beamer
 
-# Beamer build artefacts (keep .tex / .png; rebuild PDFs locally)
-/report/beamer/*.pdf
-/report/beamer/*.aux
-/report/beamer/*.log
-/report/beamer/*.nav
-/report/beamer/*.out
-/report/beamer/*.snm
-/report/beamer/*.toc
-/report/beamer/*.synctex.gz
-/report/beamer/*~
-/report/beamer/backup/
-
-# Local Word review copies (not the runnable pipeline)
-/report/Final Report/
+# Optional local notebooks / presentations (not part of virgin pipeline)
+/report/beamer/
+/report/00_overview.Rmd
+/report/05_figs.Rmd
+/report/06_mackerel_projections.Rmd
+/report/run_mackerel_projections.R
 /report/*.docx
-fsp100.pdf
+/report/Final Report/
 
-# One-shot / local / maintainer-only (not on GitHub; virgin run uses inst/extdata/)
-/scripts/_local/
-/scripts/*.log
+# Maintainer / local-only (quarantine under scripts/_local/)
+/scripts/
+/docs/
 /data-raw/
 /flr-contrib/
 /man-src/
 /report/wip/
+LICENSE.md
+fsp100.pdf
 
-# Optional local caches
+# Optional caches
 *.Rcheck/
 *.pptx
 report/mackerel.txt
+*.tex~*
 
 # renv (keep renv.lock and renv/activate.R tracked)
 renv/library/
@@ -68,7 +62,3 @@ renv/sandbox/
 renv/python/
 renv/settings.d/
 renv/.gitignore
-
-# Editor / accidental artefacts
-*.tex~*
-

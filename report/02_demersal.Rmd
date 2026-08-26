@@ -39,7 +39,7 @@ This file runs the **demersal** workflow in three stages:
   **(ii)** update to the current year, 
   **(iii)** simulate future TACs. 
   
-Summaries and discussion are found in `docs/report_main.md`.
+Summaries and discussion are developed after the TAC CSVs are produced.
 
 **Principal outputs:** `data/om/dem-stks.RData`, `data/om/dem-om.RData`, `data/TAC/dem-fct.RData`, `data/TAC/csv/dem-f.csv`.
 ---
@@ -284,5 +284,5 @@ saveGroupPlotBundle(
 
 ## Summary
 
-Demersal workflow produces harmonized assessments, regime-aware recruitment diagnostics, multi-scenario short-term catch paths, SAG/advice diagnostic figures, and CSV export **`data/TAC/csv/dem-f.csv`**. Interpretation, methods narrative, and cross-stock conclusions are developed in `docs/report_main.md`.
+Demersal workflow produces harmonized assessments, regime-aware recruitment diagnostics, multi-scenario short-term catch paths, SAG/advice diagnostic figures, and CSV export **`data/TAC/csv/dem-f.csv`**.
 
