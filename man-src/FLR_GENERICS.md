@@ -3,7 +3,7 @@
 ## Rule
 
 Prefer **FLBacktest / FLCore / FLasher / FLBRP / ggplotFL / mpb** generics
-over one-off helpers. BIM Resilience and [blueMarine](https://github.com/laurieKell/blueMarine)
+over one-off helpers. BIM Resilience and [backtest-ices](https://github.com/laurieKell/backtest-ices)
 share the same engine ([FLBacktest](https://github.com/laurieKell/FLBacktest)).
 
 Before adding an exported function here:

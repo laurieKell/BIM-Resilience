@@ -5,7 +5,7 @@ Biological TAC / productivity scenarios for the BIM resilience project.
 | | |
 |--|--|
 | **Repo** | https://github.com/laurieKell/BIM-Resilience |
-| **Shared FLR engine** | [FLBacktest](https://github.com/laurieKell/FLBacktest) (same stack as [blueMarine](https://github.com/laurieKell/blueMarine)) |
+| **Shared FLR engine** | [FLBacktest](https://github.com/laurieKell/FLBacktest) (same stack as [backtest-ices](https://github.com/laurieKell/backtest-ices)) |
 | **Architecture** | [`docs/app_vs_package.md`](docs/app_vs_package.md) |
 
 This README is the checklist for installing and re-running on a **new PC**.

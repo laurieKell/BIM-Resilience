@@ -1,10 +1,10 @@
-# BIM Resilience application vs FLBacktest (shared with blueMarine)
+# BIM Resilience application vs FLBacktest (shared with backtest-ices)
 
-**Design rule (same as blueMarine):**  
+**Design rule (same as backtest-ices):**  
 **Package = generic engine on FLR classes.**  
 **Application = data, scenario labels, report narrative.**
 
-| Concern | **FLBacktest** (`C:/active/flr/backtest`) | **bimResilience** (this repo) | **blueMarine** |
+| Concern | **FLBacktest** (`C:/active/flr/backtest`) | **bimResilience** (this repo) | **backtest-ices** |
 |---------|-------------------------------------------|--------------------------------|----------------|
 | Constant-\(F\) `fwd` | `fwdFbar()`, `fwdFmsy()` | Call via `runFcstCtrl()` | Open-loop / gate |
 | Seasonal → annual | `annualise()` | Call for northern hake | — |
@@ -31,8 +31,8 @@ Thin wrappers that remain (`projectRecLevels`, `projectMShock`, `projectRandomRe
 
 ## Sibling apps
 
-- blueMarine: https://github.com/laurieKell/blueMarine  
+- backtest-ices: https://github.com/laurieKell/backtest-ices  
 - FLBacktest: https://github.com/laurieKell/FLBacktest  
 - This app: https://github.com/laurieKell/BIM-Resilience  
 
-See also `FLBacktest` `SHARED.md` and blueMarine `docs/app_vs_package.md`.
+See also `FLBacktest` `SHARED.md` and backtest-ices `docs/app_vs_package.md`.
