@@ -48,4 +48,13 @@ fsp100.pdf
 *.pptx
 report/mackerel.txt
 report/latex/beamer/
-
+# renv (keep renv.lock and renv/activate.R tracked)
+renv/library/
+renv/staging/
+renv/local/
+renv/cellar/
+renv/lock/
+renv/sandbox/
+renv/python/
+renv/settings.d/
+renv/.gitignore
