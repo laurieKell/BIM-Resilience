@@ -7,15 +7,15 @@
 #   * Nephrops projection horizon differs from the other groups
 #   * Scenario-label inconsistency across groups (e.g. "Fmsy" vs "FMSY")
 #   * Btrig spanning both <1 and >>1 within a group (possible unit mismatch)
-# Writes a plain-text summary to report/latex/qa_report.txt.
+# Writes a plain-text summary to tex/qa_report.txt.
 #
 # Usage:
-#   source("report/finalise/03_qa_tac_csv.R"); qaTacCsv()
+#   source("scripts/finalise/03_qa_tac_csv.R"); qaTacCsv()
 # =============================================================================
 
 # Load shared paths unless 00_run_all (or similar) already did.
 if (!exists("paths", inherits = TRUE)) {
-  for (cfg in c("report/finalise/_config.R", "finalise/_config.R", "_config.R")) {
+  for (cfg in c("scripts/finalise/_config.R", "finalise/_config.R", "_config.R")) {
     if (file.exists(cfg)) {
       sys.source(cfg, envir = globalenv(), keep.source = FALSE)
       break

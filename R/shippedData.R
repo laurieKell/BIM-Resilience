@@ -1,52 +1,26 @@
-#' Paths to packaged starting FLStocks (inst/extdata).
-#'
-#' @param group One of \code{"pelagics"}, \code{"demersal"}, \code{"iccat"}.
-#' @return Absolute path to the \code{.RData} file inside the installed package
-#'   (or the local source tree when using \code{devtools::load_all()}).
-#' @export
-shippedStocksPath = function(group = c("pelagics", "demersal", "iccat")) {
+## Application I/O for tracked starting stocks under data/reference/
+## (backtest-ices style — not packaged via inst/extdata).
+
+shippedStocksPath = function(group = c("pelagics", "demersal", "iccat"),
+                             projectRoot = NULL) {
   group = match.arg(group)
+  if (is.null(projectRoot) || !nzchar(projectRoot))
+    projectRoot = bm_root()
   fname = switch(
     group,
     pelagics = "pel-stks.RData",
     demersal = "dem-stks.RData",
     iccat    = "alb-om.RData"
   )
-  path = system.file("extdata", fname, package = "bimResilience", mustWork = FALSE)
-  if (!nzchar(path) || !file.exists(path)) {
-    # Fallbacks when the package is sourced without install / load_all.
-    candidates = c(
-      file.path(defaultProjectRoot(), "inst", "extdata", fname),
-      file.path("inst", "extdata", fname)
-    )
-    hit = candidates[file.exists(candidates)]
-    if (!length(hit))
-      stop("Shipped stock file not found: ", fname,
-           ". Restore inst/extdata/ from the GitHub clone, then load_all().",
-           call. = FALSE)
-    path = normalizePath(hit[1], winslash = "/", mustWork = TRUE)
-  }
-  path
+  path = file.path(projectRoot, "data", "reference", fname)
+  if (!file.exists(path))
+    stop("Starting stock file not found: ", path,
+         ". Restore data/reference/ from the GitHub clone.",
+         call. = FALSE)
+  normalizePath(path, winslash = "/", mustWork = TRUE)
 }
 
-#' Load packaged starting stocks for reports 01 / 02 / 04.
-#'
-#' These are the only large analysis objects shipped with the package. SAG
-#' series and reference points come from the ICES web API; OM equilibria, TAC
-#' forecasts, Nephrops JABBA fits, and SS3/SAM folders are local or regenerated.
-#'
-#' @param group \code{"pelagics"} / \code{"demersal"}: returns an
-#'   \code{FLStocks} object. \code{"iccat"}: returns a named list with
-#'   \code{FLStock}, \code{SRR}, and \code{refpts} (same shape as
-#'   \code{\link{readSS3}}).
-#' @return \code{FLStocks} (pelagics, demersal) or a list (iccat).
-#' @export
-#' @examples
-#' \dontrun{
-#' pel = loadShippedStocks("pelagics")
-#' dem = loadShippedStocks("demersal")
-#' alb = loadShippedStocks("iccat")
-#' }
+#' Load starting stocks for notebooks 01 / 02 / 04.
 loadShippedStocks = function(group = c("pelagics", "demersal", "iccat")) {
   group = match.arg(group)
   path = shippedStocksPath(group)
@@ -67,26 +41,12 @@ loadShippedStocks = function(group = c("pelagics", "demersal", "iccat")) {
   e$stks
 }
 
-#' Path to packaged advice catch table (optional bridge input).
-#'
-#' Prefers a local \code{data/advice/advice.csv} when present; otherwise the
-#' copy under \code{inst/extdata/}.
-#'
-#' @param projectRoot Project root for the local copy.
-#' @return Path to an advice CSV.
-#' @export
-shippedAdvicePath = function(projectRoot = defaultProjectRoot()) {
-  local = file.path(projectRoot, "data", "advice", "advice.csv")
-  if (file.exists(local)) return(normalizePath(local, winslash = "/"))
-  path = system.file("extdata", "advice.csv", package = "bimResilience",
-                     mustWork = FALSE)
-  if (nzchar(path) && file.exists(path)) return(path)
-  candidates = c(
-    file.path(projectRoot, "inst", "extdata", "advice.csv"),
-    file.path("inst", "extdata", "advice.csv")
-  )
-  hit = candidates[file.exists(candidates)]
-  if (!length(hit))
-    stop("advice.csv not found locally or in inst/extdata/.", call. = FALSE)
-  normalizePath(hit[1], winslash = "/")
+#' Path to advice catch table (tracked under data/advice/).
+shippedAdvicePath = function(projectRoot = NULL) {
+  if (is.null(projectRoot) || !nzchar(projectRoot))
+    projectRoot = bm_root()
+  path = file.path(projectRoot, "data", "advice", "advice.csv")
+  if (!file.exists(path))
+    stop("advice.csv not found at ", path, call. = FALSE)
+  normalizePath(path, winslash = "/")
 }

@@ -1,18 +1,18 @@
 # =============================================================================
 # 02 - Stage appendix figures.
 # =============================================================================
-# Copies the knitr HTML figure PNGs into report/latex/figs/ under the stable
+# Copies the knitr HTML figure PNGs into tex/figs/ under the stable
 # names the LaTeX chapter references. Run AFTER an HTML knit (script 01).
 #
 # Usage:
-#   source("report/finalise/02_stage_figures.R")
+#   source("scripts/finalise/02_stage_figures.R")
 #   stageFigures()                 # copy all, report any missing
 #   stageFigures(strict = TRUE)    # error if any source is missing
 # =============================================================================
 
 # Load shared paths unless 00_run_all (or similar) already did.
 if (!exists("paths", inherits = TRUE)) {
-  for (cfg in c("report/finalise/_config.R", "finalise/_config.R", "_config.R")) {
+  for (cfg in c("scripts/finalise/_config.R", "finalise/_config.R", "_config.R")) {
     if (file.exists(cfg)) {
       sys.source(cfg, envir = globalenv(), keep.source = FALSE)
       break
@@ -22,7 +22,7 @@ if (!exists("paths", inherits = TRUE)) {
     stop("Cannot find _config.R; setwd to the project root.", call. = FALSE)
 }
 
-# source PNG (relative to report/html/) -> staged name (in report/latex/figs/)
+# source PNG (relative to Rmd/html/) -> staged name (in tex/figs/)
 figureMap <- c(
   "01_pelagics_files/figure-html/recruitment-residuals-1.png" = "pel-rec-residuals.png",
   "01_pelagics_files/figure-html/forecast-catch-build-1.png"  = "pel-forecast-catch.png",

@@ -5,12 +5,12 @@
 # PDF. Uses tinytex if available, else a pdflatex on PATH (run twice for refs).
 #
 # Usage:
-#   source("report/finalise/05_build_appendix.R"); buildAppendix()
+#   source("scripts/finalise/05_build_appendix.R"); buildAppendix()
 # =============================================================================
 
 # Load shared paths unless 00_run_all (or similar) already did.
 if (!exists("paths", inherits = TRUE)) {
-  for (cfg in c("report/finalise/_config.R", "finalise/_config.R", "_config.R")) {
+  for (cfg in c("scripts/finalise/_config.R", "finalise/_config.R", "_config.R")) {
     if (file.exists(cfg)) {
       sys.source(cfg, envir = globalenv(), keep.source = FALSE)
       break
@@ -20,7 +20,7 @@ if (!exists("paths", inherits = TRUE)) {
     stop("Cannot find _config.R; setwd to the project root.", call. = FALSE)
 }
 if (!exists("stageFigures", mode = "function")) {
-  for (stg in c("report/finalise/02_stage_figures.R", "02_stage_figures.R")) {
+  for (stg in c("scripts/finalise/02_stage_figures.R", "02_stage_figures.R")) {
     if (file.exists(stg)) {
       sys.source(stg, envir = globalenv(), keep.source = FALSE)
       break

@@ -3,7 +3,7 @@ title: "Nephrops functional units:  TAC simulations"
 subtitle: "Read in stocks, updates, and simulates advice"
 author: "Laurence T. Kell"
 date: "`r Sys.Date()`"
-# Knit → HTML under report/html/. For PDF/Word see report/knit_to_report.R
+# Knit → HTML under Rmd/html/. For PDF/Word see Rmd/knit_to_report.R
 # (knit_to_report(..., format = "pdf"|"docx") or render_report(...)).
 knit: (function(inputFile, encoding) { e <- new.env(); sys.source(file.path(dirname(normalizePath(inputFile)), "knit_to_report.R"), envir = e, keep.source = FALSE); e$knit_to_report(inputFile, encoding) })
 output:
@@ -41,7 +41,7 @@ knitr::opts_chunk$set(warning = TRUE, message = TRUE, error = FALSE)
 ```
 
 ```{r paths}
-source(file.path(dirname(knitr::current_input(dir = TRUE)), "ensureBimResilience.R"))
+source(if (file.exists("../R/paths.R")) "../R/paths.R" else "R/paths.R")
 setupReportPaths()
 ```
 

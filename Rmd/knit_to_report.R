@@ -14,21 +14,21 @@
 #     pdf_document: ...
 #     word_document: ...
 #
-# RStudio Knit button → HTML under report/html/ (default).
+# RStudio Knit button → HTML under Rmd/html/ (default).
 # Other formats from the console (or after setting RMD_OUTPUT_FORMAT):
 #
-#   source("report/knit_to_report.R")
-#   knit_to_report("report/01_pelagics.Rmd", format = "pdf")
-#   knit_to_report("report/01_pelagics.Rmd", format = "docx")
-#   render_report("report/01_pelagics.Rmd", formats = c("html", "pdf", "docx"))
+#   source("Rmd/knit_to_report.R")
+#   knit_to_report("Rmd/01_pelagics.Rmd", format = "pdf")
+#   knit_to_report("Rmd/01_pelagics.Rmd", format = "docx")
+#   render_report("Rmd/01_pelagics.Rmd", formats = c("html", "pdf", "docx"))
 #
 # Env: RMD_OUTPUT_FORMAT = html | pdf | docx | word
 #      RMD_RENDER_QUIET  = true | false   (see rmd_render_quiet.R)
 # =============================================================================
 
-#' Rewrite image/link URLs pointing at report/figs/ to ../figs/ relative to report/html/*.html.
+#' Rewrite image/link URLs pointing at Rmd/figs/ to ../figs/ relative to Rmd/html/*.html.
 #'
-#' @param html_file Path to written `.html` (under report/html/).
+#' @param html_file Path to written `.html` (under Rmd/html/).
 #' @param report_dir Directory containing the `.Rmd` (normally .../report).
 #' @return `html_file` invisibly
 #' @noRd
@@ -101,7 +101,7 @@ fix_report_html_figure_paths <- function(html_file, report_dir) {
   )
 }
 
-#' Knit a stock-group Rmd to html, pdf, or docx under report/{html,pdf,docx}/.
+#' Knit a stock-group Rmd to html, pdf, or docx under Rmd/{html,pdf,docx}/.
 #'
 #' @param input_file Path to the `.Rmd`.
 #' @param encoding Encoding from the RStudio Knit hook (default UTF-8).

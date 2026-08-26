@@ -1,0 +1,4 @@
+﻿group,file,object
+pelagics,pel-stks.RData,stks
+demersal,dem-stks.RData,stks
+iccat,alb-om.RData,FLStock

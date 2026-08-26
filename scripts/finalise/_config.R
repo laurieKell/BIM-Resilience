@@ -1,7 +1,6 @@
 # =============================================================================
-# Finalisation config: shared paths and settings for the finalise/ scripts.
-# Source this first; every other script in this folder sources it if needed.
-# Override the project root with:  Sys.setenv(RESILIENCE_ROOT = "D:/path")
+# Finalisation config: shared paths for scripts/finalise/
+# Override root with:  Sys.setenv(RESILIENCE_ROOT = "D:/path")
 # =============================================================================
 
 projectRoot <- local({
@@ -9,7 +8,7 @@ projectRoot <- local({
   if (nzchar(envRoot))
     return(normalizePath(envRoot, winslash = "/", mustWork = TRUE))
 
-  # Prefer this file's location: report/finalise/_config.R → ../..
+  # Prefer this file's location: scripts/finalise/_config.R → ../..
   for (i in rev(seq_len(sys.nframe()))) {
     f <- sys.frame(i)$ofile
     if (!is.null(f) && identical(basename(f), "_config.R")) {
@@ -18,12 +17,12 @@ projectRoot <- local({
     }
   }
 
-  # Else walk up from cwd looking for DESCRIPTION + R/ + report/
+  # Else walk up for backtest-ices-style markers
   d <- normalizePath(getwd(), winslash = "/", mustWork = TRUE)
   for (i in seq_len(24L)) {
-    if (file.exists(file.path(d, "DESCRIPTION")) &&
+    if (file.exists(file.path(d, "data/reference/stocks.csv")) &&
         dir.exists(file.path(d, "R")) &&
-        dir.exists(file.path(d, "report")))
+        dir.exists(file.path(d, "Rmd")))
       return(d)
     parent <- dirname(d)
     if (identical(parent, d)) break
@@ -35,12 +34,12 @@ projectRoot <- local({
 
 paths <- list(
   root      = projectRoot,
-  report    = file.path(projectRoot, "report"),
-  html      = file.path(projectRoot, "report", "html"),
-  latex     = file.path(projectRoot, "report", "latex"),
-  latexFigs = file.path(projectRoot, "report", "latex", "figs"),
+  report    = file.path(projectRoot, "Rmd"),
+  html      = file.path(projectRoot, "Rmd", "html"),
+  latex     = file.path(projectRoot, "tex"),
+  latexFigs = file.path(projectRoot, "tex", "figs"),
   tacCsv    = file.path(projectRoot, "data", "TAC", "csv"),
-  knitter   = file.path(projectRoot, "report", "knit_to_report.R")
+  knitter   = file.path(projectRoot, "Rmd", "knit_to_report.R")
 )
 
 # Stock-group reports (order = render order).

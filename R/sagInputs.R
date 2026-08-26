@@ -12,7 +12,7 @@ defaultProjectRoot = function() {
   if (nzchar(envRoot))
     return(normalizePath(envRoot, winslash = "/", mustWork = TRUE))
   stop(
-    "Cannot resolve project root. Set RESILIENCE_ROOT or attach bimResilience.",
+    "Cannot resolve project root. Set RESILIENCE_ROOT or source R/paths.R.",
     call. = FALSE
   )
 }
@@ -103,7 +103,7 @@ loadSagRefpts = function(sid, year = 2025, root = defaultSdgRoot()) {
 #' Read advice.csv into an FLQuants keyed by sid.
 #'
 #' Prefers local \code{data/advice/advice.csv}, else the packaged copy under
-#' \code{inst/extdata/advice.csv}.
+#' \code{data/advice/advice.csv}.
 #'
 #' @param adviceFile Path to advice CSV (wide year columns).
 #' @return \code{FLQuants} of advice catch by stock.
@@ -203,7 +203,7 @@ loadSagBundle = function(
     dropHomEarly = FALSE,
     requireCatches = TRUE) {
   if (!exists("bimSids", mode = "function"))
-    stop("bimSids() not found; attach bimResilience first.", call. = FALSE)
+    stop("bimSids() not found; source R/paths.R first.", call. = FALSE)
 
   allSids = bimSids()
   sids = allSids[allSids$fishery == fishery, , drop = FALSE]

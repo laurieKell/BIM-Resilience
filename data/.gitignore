@@ -1,7 +1,2 @@
-# Local analysis workspace — do not commit blobs to git.
-# Package ships starting FLStocks in ../inst/extdata/ instead.
-# See README.md for the data policy (web / generated / shipped).
-
-*
-!.gitignore
-!README.md
+# Prefer root .gitignore for what is tracked under data/.
+# Generated trees (om, TAC, plot-objects, inputs) are ignored at repo root.

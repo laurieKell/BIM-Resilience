@@ -1,11 +1,7 @@
 #' Load FLR / assessment packages used by stock-group Rmds.
 #'
-#' Assumes \code{bimResilience} is already attached (call
-#' \code{ensureBimResilience(projectRoot)} first). Does not re-attach the package.
-#'
-#' @param extra Character vector of additional package names (e.g. Nephrops).
-#' @return Invisibly, the packages loaded.
-#' @export
+#' Call after sourcing \code{R/paths.R} and \code{load_app()} (or
+#' \code{setupReportPaths()}).
 loadReportLibraries = function(extra = character()) {
   required = c("FLCore", "FLasher", "FLBRP", "FLBacktest", "plyr", "dplyr")
   optional = c(

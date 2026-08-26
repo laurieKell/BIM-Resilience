@@ -1,76 +1,48 @@
-#' Locate the project root without a machine-specific path.
+# Project root detection (portable; backtest-ices style — not an R package)
+
+#' Find the BIM-Resilience repository root
 #'
-#' Order: \code{RESILIENCE_ROOT} if set; else walk upward from \code{start}
-#' looking for \code{DESCRIPTION} plus \code{R/} and \code{report/}.
-#'
-#' @param start Directory to start walking from. Default: \code{getwd()}, or
-#'   the directory of a file being \code{source()}d.
-#' @return Absolute project-root path (forward slashes).
-#' @export
-findProjectRoot = function(start = NULL) {
+#' Looks upward for \code{data/reference/stocks.csv} and \code{scripts/finalise/00_run_all.R}.
+#' Override with \code{Sys.setenv(RESILIENCE_ROOT = "...")}.
+bm_root = function(start = NULL) {
   envRoot = Sys.getenv("RESILIENCE_ROOT", "")
   if (nzchar(envRoot))
     return(normalizePath(envRoot, winslash = "/", mustWork = TRUE))
 
-  if (is.null(start) || !nzchar(start)) {
-    ofile = NULL
-    for (i in seq_len(sys.nframe())) {
-      e = sys.frame(i)
-      if (!is.null(e$ofile)) ofile = e$ofile
+  markers = c("data/reference/stocks.csv", "scripts/finalise/00_run_all.R")
+  starts = unique(c(
+    start,
+    getwd(),
+    if (requireNamespace("knitr", quietly = TRUE)) {
+      inp = tryCatch(knitr::current_input(dir = TRUE), error = function(e) NULL)
+      if (!is.null(inp) && nzchar(inp)) dirname(inp) else NULL
     }
-    start = if (!is.null(ofile)) dirname(normalizePath(ofile, winslash = "/"))
-            else getwd()
-  }
-  start = normalizePath(start, winslash = "/", mustWork = TRUE)
-
-  isRoot = function(d) {
-    file.exists(file.path(d, "DESCRIPTION")) &&
-      dir.exists(file.path(d, "R")) &&
-      dir.exists(file.path(d, "report"))
-  }
-
-  d = start
-  for (i in seq_len(24L)) {
-    if (isRoot(d)) return(normalizePath(d, winslash = "/"))
-    parent = dirname(d)
-    if (identical(parent, d)) break
-    d = parent
+  ))
+  starts = starts[!is.null(starts) & nzchar(starts)]
+  for (s in starts) {
+    d = normalizePath(s, winslash = "/", mustWork = FALSE)
+    for (i in seq_len(12L)) {
+      if (all(file.exists(file.path(d, markers))))
+        return(normalizePath(d, winslash = "/"))
+      parent = dirname(d)
+      if (identical(parent, d)) break
+      d = parent
+    }
   }
   stop(
-    "Cannot find project root from ", start, ". ",
-    "Set Sys.setenv(RESILIENCE_ROOT = \"...\") or work from inside the repo.",
+    "Cannot find BIM-Resilience root (need data/reference/stocks.csv). ",
+    "Set RESILIENCE_ROOT or knit from Rmd/.",
     call. = FALSE
   )
 }
 
-#' Resolve project root and standard data / report paths.
-#'
-#' Typical Rmd setup (no hardcoded path):
-#'
-#' \preformatted{
-#' source(file.path(dirname(knitr::current_input(dir = TRUE)),
-#'                  "ensureBimResilience.R"))
-#' setupReportPaths()
-#' loadReportLibraries()   # does not re-attach bimResilience
-#' }
-#'
-#' Local analysis inputs and generated artefacts live under
-#' \code{file.path(projectRoot, "data")} (or \code{RESILIENCE_DATA} /
-#' \code{dataRoot}). That tree is gitignored; the package ships starting
-#' FLStocks in \code{inst/extdata/} (see \code{\link{loadShippedStocks}}).
-#' SAG time series and reference points are fetched from the ICES web API
-#' when local sdGraphs CSVs are absent.
-#'
-#' @param projectRoot Project root. If \code{NULL}, use
-#'   \code{\link{findProjectRoot}}.
-#' @param dataRoot Local analysis-data directory. If \code{NULL}, use
-#'   \code{RESILIENCE_DATA} if set, else \code{file.path(projectRoot, "data")}.
-#' @return Named list of path strings (\code{projectRoot}, \code{dir*},
-#'   \code{adviceCsv}, ...).
-#' @export
+# Alias used by older helpers / Rmds
+findProjectRoot = function(start = NULL) bm_root(start)
+
+#' Resolve project root and standard data / notebook paths.
 resiliencePaths = function(projectRoot = NULL, dataRoot = NULL) {
   if (is.null(projectRoot) || !nzchar(projectRoot)) {
-    projectRoot = findProjectRoot()
+    projectRoot = bm_root()
   } else {
     projectRoot = normalizePath(projectRoot, winslash = "/", mustWork = FALSE)
   }
@@ -90,7 +62,7 @@ resiliencePaths = function(projectRoot = NULL, dataRoot = NULL) {
   dirSAM     = file.path(dirInputs, "SAM")
   dirIces    = file.path(dirInputs, "ices")
   dirSDG     = file.path(dirIces, "sdGraphs")
-  dirReport  = file.path(projectRoot, "report")
+  dirReport  = file.path(projectRoot, "Rmd")
   dirPkg     = file.path(projectRoot, "R")
 
   list(
@@ -109,4 +81,38 @@ resiliencePaths = function(projectRoot = NULL, dataRoot = NULL) {
     dirPkg      = dirPkg,
     adviceCsv   = file.path(dirAdvice, "advice.csv")
   )
+}
+
+#' Source all app helpers under \code{R/} (order: paths already loaded).
+load_app = function(root = bm_root()) {
+  files = c(
+    "sids.R",
+    "shippedData.R",
+    "sagInputs.R",
+    "reportLibs.R",
+    "reportPlots.R",
+    "eqRegimes.R",
+    "fcst.R",
+    "fcstCtrl.R",
+    "simTAC.R",
+    "tacCsvExports.R",
+    "nephOps.R",
+    "readSS3.R",
+    "macProjections.R"
+  )
+  for (f in files) {
+    p = file.path(root, "R", f)
+    if (file.exists(p)) source(p, local = FALSE)
+  }
+  invisible(TRUE)
+}
+
+#' Bind path variables into the caller (Rmd entry point).
+setupReportPaths = function(envir = parent.frame()) {
+  root = bm_root()
+  if (!exists("loadShippedStocks", mode = "function", inherits = TRUE))
+    load_app(root)
+  paths = resiliencePaths(root)
+  list2env(paths, envir = envir)
+  invisible(paths)
 }

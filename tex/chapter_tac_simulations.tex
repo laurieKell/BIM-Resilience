@@ -5,9 +5,9 @@
 %   - As an appendix (or chapter) in Resilience Report V8.0
 %   - Alone: compile tac_simulations_standalone.tex
 %
-% Figures are copies of knitr PNGs from report/html/*_files/figure-html/,
-% staged under report/latex/figs/. Refresh them (all in R) with:
-%   source("report/finalise/02_stage_figures.R"); stageFigures()
+% Figures are copies of knitr PNGs from Rmd/html/*_files/figure-html/,
+% staged under tex/figs/. Refresh them (all in R) with:
+%   source("scripts/finalise/02_stage_figures.R"); stageFigures()
 % =============================================================================
 
 \chapter{Simulation of future TACs}
@@ -393,8 +393,8 @@ recruitment multipliers of 1, 0.75 and 0.5
         a cross-FU magnitude, until the per-FU scaling is reconciled.
   \item \textbf{Figures are regenerated from the R Markdown knits.}
         Before locking V8.0, re-knit the four stock-group Rmds, refresh
-        \texttt{report/latex/figs/} in R with
-        \texttt{source("report/finalise/02\_stage\_figures.R"); stageFigures()},
+        \texttt{tex/figs/} in R with
+        \texttt{source("scripts/finalise/02\_stage\_figures.R"); stageFigures()},
         and confirm captions still match the panels.
 \end{itemize}
 

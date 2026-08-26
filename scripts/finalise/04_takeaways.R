@@ -3,15 +3,15 @@
 # =============================================================================
 # For each stock group and sid, compares the final-year catch and biomass status
 # across scenarios so the interpretive sentences in the chapter are grounded in
-# the actual numbers. Writes a tidy CSV to report/latex/takeaways.csv.
+# the actual numbers. Writes a tidy CSV to tex/takeaways.csv.
 #
 # Usage:
-#   source("report/finalise/04_takeaways.R"); takeaways()
+#   source("scripts/finalise/04_takeaways.R"); takeaways()
 # =============================================================================
 
 # Load shared paths unless 00_run_all (or similar) already did.
 if (!exists("paths", inherits = TRUE)) {
-  for (cfg in c("report/finalise/_config.R", "finalise/_config.R", "_config.R")) {
+  for (cfg in c("scripts/finalise/_config.R", "finalise/_config.R", "_config.R")) {
     if (file.exists(cfg)) {
       sys.source(cfg, envir = globalenv(), keep.source = FALSE)
       break

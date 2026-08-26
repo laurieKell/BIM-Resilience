@@ -2,9 +2,7 @@
 
 Biological TAC / productivity scenarios. Default branch: **`release`**.
 
-Shared FLR engine: [FLBacktest](https://github.com/laurieKell/FLBacktest) (same stack as [backtest-ices](https://github.com/laurieKell/backtest-ices)).
-
-This repo on GitHub is **only** what a clean PC needs to restore packages and run the TAC pipeline (`01`–`04` + finalise). Starting stocks ship in `inst/extdata/` — no local SS3/SAM.
+Project layout matches [backtest-ices](https://github.com/laurieKell/backtest-ices): app helpers in `R/`, notebooks in `Rmd/`, tracked seeds in `data/`, orchestration in `scripts/`. Shared FLR engine: [FLBacktest](https://github.com/laurieKell/FLBacktest). **Not** an R package — no `DESCRIPTION` / `inst/extdata`.
 
 ---
 
@@ -44,14 +42,15 @@ remotes::install_github(c(
   "flr/icesdata", "flr/FLRebuild", "flr/FLife",
   "laurieKell/FLBacktest", "laurieKell/mpb"
 ))
-devtools::install_deps(".", dependencies = TRUE)
 renv::restore()
 ```
 
 ### 4. Smoke checks
 
 ```r
-devtools::load_all(".")
+source("R/paths.R")
+root <- bm_root()
+load_app(root)
 loadReportLibraries()
 stopifnot(length(names(loadShippedStocks("pelagics"))) > 0)
 stopifnot(length(names(loadShippedStocks("demersal"))) > 0)
@@ -62,31 +61,33 @@ message("Smoke OK")
 
 ### 5. Run the pipeline
 
-Knit `report/01_pelagics.Rmd` … `04_iccat.Rmd` (RStudio **Knit**, or below), then finalise:
+Knit `Rmd/01_pelagics.Rmd` … `04_iccat.Rmd`, then finalise:
 
 ```r
-source("report/finalise/00_run_all.R")
+source("scripts/finalise/00_run_all.R")
 runAll(render = TRUE)    # re-knit 01–04 then stage / QA / appendix PDF
-# runAll(render = FALSE) # if 01–04 HTML + TAC CSVs already exist
+# runAll(render = FALSE) # if HTML + TAC CSVs already exist
 ```
 
-Outputs land under local `data/` (gitignored). SAG series are fetched from the web.
-
-Optional path overrides:
+Outputs land under local `data/` (gitignored except `reference/` + `advice/`). SAG series are fetched from the web.
 
 ```r
 Sys.setenv(RESILIENCE_ROOT = "D:/path/to/BIM-Resilience")
-Sys.setenv(RESILIENCE_DATA = "D:/path/to/local-analysis-data")
+Sys.setenv(RESILIENCE_DATA = "D:/path/to/local-analysis-data")  # optional
 ```
 
 ---
 
-## On GitHub vs local
+## Layout
 
-| On GitHub | Local only |
-|-----------|------------|
-| `R/`, `inst/extdata/`, `renv.lock` | Generated `data/` (OM, TAC, caches) |
-| `report/01`–`04`, knit helpers, `finalise/` | Knit HTML/PDF, latex build products |
-| `report/latex/*.tex` (appendix sources) | Beamer decks, overview/mackerel notebooks, `docs/` |
+| Path | Role |
+|------|------|
+| `R/` | Thin app helpers (paths, SAG I/O, scenario labels) |
+| `Rmd/` | Pipeline notebooks `01`–`04` + knit drivers |
+| `data/reference/` | Tracked starting FLStocks |
+| `data/advice/advice.csv` | Tracked advice bridge |
+| `scripts/finalise/` | Stage figs, QA, appendix PDF |
+| `tex/` | TAC appendix LaTeX sources |
+| `renv.lock` | Exact package set |
 
-`FLCandy` is not part of this pipeline.
+Prefer **FLBacktest** / FLR generics for projection and stock ops; keep app `R/` for project I/O and scenario tables only.

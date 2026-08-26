@@ -6,50 +6,56 @@
 *.html
 *.Rproj
 
-# Analysis outputs (writable at runtime; not on GitHub)
+# Analysis outputs (writable at runtime)
+# Track virgin seeds under data/reference/ and data/advice/
 /data/**
 !/data/.gitignore
+!/data/reference/
+!/data/reference/**
+!/data/advice/
+!/data/advice/advice.csv
 
-# Knit / LaTeX products (sources under report/latex/*.tex stay tracked)
-/report/html/
-/report/pdf/
-/report/docx/
-/report/figs/
-/report/cache/
-/report/latex/figs/
-/report/latex/*.pdf
-/report/latex/*.aux
-/report/latex/*.log
-/report/latex/*.out
-/report/latex/*.toc
-/report/latex/qa_report.txt
-/report/latex/takeaways.csv
-/report/latex/beamer/
-/report/latex/beamer
+# Knit products under Rmd/
+/Rmd/html/
+/Rmd/pdf/
+/Rmd/docx/
+/Rmd/figs/
+/Rmd/cache/
+/Rmd/*.docx
+/Rmd/Final Report/
+/Rmd/beamer/
+/Rmd/00_overview.Rmd
+/Rmd/05_figs.Rmd
+/Rmd/06_mackerel_projections.Rmd
+/Rmd/run_mackerel_projections.R
+/Rmd/wip/
 
-# Optional local notebooks / presentations (not part of virgin pipeline)
-/report/beamer/
-/report/00_overview.Rmd
-/report/05_figs.Rmd
-/report/06_mackerel_projections.Rmd
-/report/run_mackerel_projections.R
-/report/*.docx
-/report/Final Report/
+# LaTeX build products (sources under tex/*.tex stay tracked)
+/tex/figs/
+/tex/*.pdf
+/tex/*.aux
+/tex/*.log
+/tex/*.out
+/tex/*.toc
+/tex/qa_report.txt
+/tex/takeaways.csv
+/tex/beamer/
+/tex/beamer
 
-# Maintainer / local-only (quarantine under scripts/_local/)
-/scripts/
+# Maintainer / local-only
+/scripts/_local/
+/scripts/*.log
 /docs/
 /data-raw/
 /flr-contrib/
 /man-src/
-/report/wip/
 LICENSE.md
 fsp100.pdf
 
 # Optional caches
 *.Rcheck/
 *.pptx
-report/mackerel.txt
+Rmd/mackerel.txt
 *.tex~*
 
 # renv (keep renv.lock and renv/activate.R tracked)
