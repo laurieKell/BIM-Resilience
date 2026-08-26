@@ -46,10 +46,20 @@ loadReportLibraries(extra = "ggplot2")
 dirBeamer = file.path(dirReport, "beamer")
 dir.create(dirBeamer, recursive = TRUE, showWarnings = FALSE)
 
-# SAG snapshot lives in blueMarine (override with BLUEMARINE_DATA if needed).
-dirBlueMarine = Sys.getenv(
-  "BLUEMARINE_DATA",
-  unset = "C:/active/blueMarine/data")
+# Optional SAG snapshot from a sibling backtest-ices / blueMarine clone
+# (override with BACKTEST_ICES_DATA or BLUEMARINE_DATA).
+dirBlueMarine = {
+  env = Sys.getenv("BACKTEST_ICES_DATA", unset = Sys.getenv("BLUEMARINE_DATA", ""))
+  if (nzchar(env)) env else {
+    cands = file.path(
+      dirname(projectRoot),
+      c("backtest-ices/data", "blueMarine/data", "basktest-ices/data"))
+    hit = cands[dir.exists(cands)][1]
+    if (is.na(hit)) "" else normalizePath(hit, winslash = "/", mustWork = FALSE)
+  }
+}
+if (!nzchar(dirBlueMarine))
+  message("05_figs: no sibling backtest-ices data found; set BACKTEST_ICES_DATA if needed.")
 ```
 
 ```{r libs}
@@ -181,6 +191,13 @@ save_beamer_fig = function(plot, name, width, height) {
 ```
 
 ```{r data}
+if (!nzchar(dirBlueMarine) ||
+    !file.exists(file.path(dirBlueMarine, "interim", "sag_stocks.RData"))) {
+  stop(
+    "05_figs needs a backtest-ices (or blueMarine) data tree with ",
+    "interim/sag_stocks.RData. Set BACKTEST_ICES_DATA to that data/ folder.",
+    call. = FALSE)
+}
 load(file.path(dirBlueMarine, "interim", "sag_stocks.RData"))
 load(file.path(dirBlueMarine, "results", "stock_summary.RData"))
 ```

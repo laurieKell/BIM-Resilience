@@ -17,6 +17,7 @@
 /report/pdf/
 /report/docx/
 /report/figs/
+/report/cache/
 /report/latex/figs/
 /report/latex/*.pdf
 /report/latex/*.aux
@@ -25,8 +26,10 @@
 /report/latex/*.toc
 /report/latex/qa_report.txt
 /report/latex/takeaways.csv
+/report/latex/beamer/
 
-# Beamer build artefacts (keep .tex / .png / .pdf of decks)
+# Beamer build artefacts (keep .tex / .png; rebuild PDFs locally)
+/report/beamer/*.pdf
 /report/beamer/*.aux
 /report/beamer/*.log
 /report/beamer/*.nav
@@ -42,12 +45,15 @@
 /report/*.docx
 fsp100.pdf
 
+# One-shot / local scripts
+/scripts/_local/
+/scripts/*.log
+
 # Optional local caches
 *.Rcheck/
-
 *.pptx
 report/mackerel.txt
-report/latex/beamer/
+
 # renv (keep renv.lock and renv/activate.R tracked)
 renv/library/
 renv/staging/

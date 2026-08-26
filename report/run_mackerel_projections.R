@@ -2,7 +2,16 @@
 # Usage: Rscript report/run_mackerel_projections.R
 
 suppressPackageStartupMessages({
-  reportDir = "C:/active/BIM-Resilience/report"
+  # Resolve report/ when invoked via Rscript or from project root / report/
+  fileArg = grep("^--file=", commandArgs(trailingOnly = FALSE), value = TRUE)
+  reportDir = if (length(fileArg)) {
+    dirname(normalizePath(sub("^--file=", "", fileArg[1]), winslash = "/"))
+  } else {
+    cand = c("report", ".")
+    hit = cand[file.exists(file.path(cand, "ensureBimResilience.R"))][1]
+    if (is.na(hit)) stop("Run from project root or report/", call. = FALSE)
+    normalizePath(hit, winslash = "/")
+  }
   source(file.path(reportDir, "ensureBimResilience.R"))
   paths = setupReportPaths()
   list2env(paths, envir = environment())

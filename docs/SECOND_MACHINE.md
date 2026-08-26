@@ -1,11 +1,11 @@
 # Second-machine checklist
 
-Follow the project **[README](../README.md)** (sections 0–4). Condensed copy:
+Follow the project **[README](../README.md)** (**Virgin machine test**). Condensed copy:
 
 ## Clone + restore
 
 ```bash
-git clone https://github.com/laurieKell/BIM-Resilience.git
+git clone -b release https://github.com/laurieKell/BIM-Resilience.git
 cd BIM-Resilience
 Rscript -e "install.packages('renv', repos='https://cloud.r-project.org')"
 Rscript -e "renv::restore()"
@@ -28,9 +28,9 @@ runAll(render = FALSE)   # TRUE to re-knit 01–04 first
 
 ## Requirements
 
-- R ≥ 4.0 (4.4.x recommended; matches `renv.lock`)
-- Network for CRAN + GitHub (`flr/*`, `laurieKell/FLBacktest`)
-- Windows: Rtools if packages need compiling
+- R **4.6.1** (matches `renv.lock`) + Rtools45 on Windows
+- Network for CRAN + GitHub (`flr/*`, `laurieKell/FLBacktest`) + ICES SAG
+- No local SS3/SAM required for the default (`rebuild* = FALSE`) path
 
 ## Refresh the lock (working machine only)
 

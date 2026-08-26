@@ -246,7 +246,7 @@ list2env(unpackFcstScenarios(fcstStks), envir = environment())
 historical = FLStocks(stks)
 ggDemForecast = plotForecastCatch(fct)
 print(ggDemForecast)
-save(ggDemForecast,file="C:/active/BIM-Resilience/data/plot-objects/ggDemForecas.RData")
+save(ggDemForecast, file = file.path(dirPlot, "ggDemForecast.RData"))
 ```
 
 ```{r forecast-save-stks, eval=FALSE, include=FALSE}

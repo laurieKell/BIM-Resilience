@@ -236,7 +236,7 @@ list2env(unpackFcstScenarios(fcstStks), envir = environment())
 historical = FLStocks(stks)
 ggPelForecast = plotForecastCatch(fct)
 print(ggPelForecast)
-save(ggPelForecast,file="C:/active/BIM-Resilience/data/plot-objects/ggPelForecas.RData")
+save(ggPelForecast, file = file.path(dirPlot, "ggPelForecast.RData"))
 ```
 
 ```{r forecast-save-stks, eval=!FALSE, include=FALSE}

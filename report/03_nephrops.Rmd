@@ -443,7 +443,7 @@ ggNepForecastCatch=plot(ctc)+
 
 ggNepForecastCatch
 
-save(ggNepForecastCatch,file="C:/active/BIM-Resilience/data/plot-objects/ggNepForecastCatch.RData")
+save(ggNepForecastCatch, file = file.path(dirPlot, "ggNepForecastCatch.RData"))
 ```
 
 **Figure `r iFig=iFig+1; iFig`**: Catch relative to MSY for all Nephrops functional units. Values above 1 indicate catch exceeding MSY reference levels. Each panel shows a different functional unit.

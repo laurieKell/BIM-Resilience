@@ -5,107 +5,81 @@ Biological TAC / productivity scenarios for the BIM resilience project.
 | | |
 |--|--|
 | **Repo** | https://github.com/laurieKell/BIM-Resilience |
+| **Default branch** | `release` |
 | **Shared FLR engine** | [FLBacktest](https://github.com/laurieKell/FLBacktest) (same stack as [backtest-ices](https://github.com/laurieKell/backtest-ices)) |
 | **Architecture** | [`docs/app_vs_package.md`](docs/app_vs_package.md) |
 
-This README is the checklist for installing and re-running on a **new PC**.
+Follow **Virgin machine test** below on a clean PC. No local SS3/SAM archives are required for the default run.
 
 ---
 
-## 0. Prerequisites
+## Virgin machine test
+
+Do these steps **in order**, working directory = the clone root.
+
+### 1. Prerequisites
 
 | Need | Notes |
 |------|--------|
-| **R** | **4.6.1** (matches `renv.lock`; project library under `renv/library/.../R-4.6/`) |
-| **Git** | Clone from GitHub |
-| **Rtools** (Windows) | **Rtools45** (works with R 4.6.x) to compile FLR / TMB packages |
-| **Network** | CRAN + FLR r-universe + GitHub (`flr/*`, `laurieKell/FLBacktest`, `mpb`) |
-| **Optional** | RStudio / Positron; LaTeX (`tinytex` or MiKTeX) only if you build the appendix PDF |
+| **R** | **4.6.1** (matches `renv.lock`) |
+| **Rtools** (Windows) | **Rtools45** — compile FLR / TMB |
+| **Git** | Access to this repo + `laurieKell/FLBacktest` + `flr/*` |
+| **Network** | CRAN, GitHub, ICES SAG (when knitting) |
 
-GitHub auth: HTTPS with a credential helper, or SSH keys for `git@github.com:...`.
+In RStudio: set R to **4.6.1**, then open this project.
 
----
-
-## 1. Clone
+### 2. Clone
 
 ```bash
-git clone https://github.com/laurieKell/BIM-Resilience.git
+git clone -b release https://github.com/laurieKell/BIM-Resilience.git
 cd BIM-Resilience
 ```
 
-(SSH: `git clone git@github.com:laurieKell/BIM-Resilience.git`)
+(If `release` is already the GitHub default, a plain `git clone` is enough.)
 
-Open the project at this folder (the one with `DESCRIPTION` / `Resilience.Rproj`).
-
----
-
-## 2. Install R packages (renv)
-
-From the project root:
+### 3. Install packages
 
 ```bash
 Rscript -e "install.packages('renv', repos = 'https://cloud.r-project.org')"
 Rscript -e "renv::restore()"
 ```
 
-Or in R:
+First restore can take a long time.
 
-```r
-install.packages("renv", repos = "https://cloud.r-project.org")
-renv::restore()
-```
-
-`renv::restore()` installs everything recorded in `renv.lock` (CRAN + GitHub FLR packages, including FLBacktest). First restore can take a long time.
-
-### If restore fails
-
-Install the shared engine and this package by hand, then pull the rest as needed:
+If restore fails on FLR packages:
 
 ```r
 install.packages(c("remotes", "devtools"), repos = "https://cloud.r-project.org")
-remotes::install_github("laurieKell/FLBacktest")
-# FLR stack (devel FLCore often required):
 remotes::install_github(c(
   "flr/FLCore@devel", "flr/FLBRP", "flr/FLasher", "flr/ggplotFL",
   "flr/icesdata", "flr/FLRebuild", "flr/FLife",
-  "laurieKell/mpb"
+  "laurieKell/FLBacktest", "laurieKell/mpb"
 ))
 devtools::install_deps(".", dependencies = TRUE)
+renv::restore()
 ```
 
-On Windows, use **R 4.6.1** and **Rtools45**. Prefer `renv::restore()` from this repo’s lockfile once it matches your R version.
+`FLCandy` is **not** part of this pipeline.
 
-`FLCandy` is **not** part of this pipeline (prototypes only); shared methods live in FLBacktest / FLRebuild / icesdata.
----
-
-## 3. Smoke test
-
-From the **project root**:
+### 4. Smoke checks
 
 ```r
 devtools::load_all(".")
 loadReportLibraries()
 
-# Shipped starting stocks (no local SS3/SAM required)
-names(loadShippedStocks("pelagics"))
-names(loadShippedStocks("demersal"))
-names(loadShippedStocks("iccat"))
+# Shipped starting stocks (inst/extdata/) — no local assessments required
+stopifnot(length(names(loadShippedStocks("pelagics"))) > 0)
+stopifnot(length(names(loadShippedStocks("demersal"))) > 0)
+stopifnot(length(names(loadShippedStocks("iccat"))) > 0)
 
-# Paths resolve under ./data by default
-resiliencePaths()
+# Writable local data tree (created under ./data as needed)
+print(resiliencePaths())
+message("Smoke OK")
 ```
 
-If `load_all` or `loadReportLibraries` stops with a missing package, install that package and retry (or re-run `renv::restore()`).
+### 5. Run the analysis
 
----
-
-## 4. Re-run the analysis
-
-Generated OMs and TAC CSVs are written under local `data/` (gitignored). SAG series are fetched from the web unless you cache them locally.
-
-### Full pipeline (stock groups → appendix)
-
-Knit in order, or use the finalise driver:
+Generated OMs and TAC CSVs go under local `data/` (gitignored). SAG series are fetched from the web.
 
 | Step | What | Path |
 |------|------|------|
@@ -115,18 +89,21 @@ Knit in order, or use the finalise driver:
 | 7 | Stage figs, QA, appendix PDF | `report/finalise/00_run_all.R` |
 
 ```r
-# From project root — after 01–04 have been knitted at least once:
+# After 01–04 have been knitted at least once:
 source("report/finalise/00_run_all.R")
-runAll(render = FALSE)   # set TRUE to re-knit 01–04 first (slow)
+runAll(render = FALSE)   # TRUE to re-knit 01–04 first (slow)
 ```
 
-In RStudio: open each Rmd and **Knit**, working directory = project root (or `report/` via the knit helper).
+Or open each Rmd and **Knit** (working directory = project root).
 
-Details: [`docs/WORKFLOW.md`](docs/WORKFLOW.md). More checklist notes: [`docs/SECOND_MACHINE.md`](docs/SECOND_MACHINE.md).
+Details: [`docs/WORKFLOW.md`](docs/WORKFLOW.md).
+
+**Note:** `report/05_figs.Rmd` optionally loads a SAG snapshot from a sibling
+[backtest-ices](https://github.com/laurieKell/backtest-ices) clone. Set
+`BACKTEST_ICES_DATA` to that repo’s `data/` folder if needed; otherwise skip or
+adapt that notebook.
 
 ### Optional path overrides
-
-Only if the clone is not your working directory, or data live elsewhere:
 
 ```r
 Sys.setenv(RESILIENCE_ROOT = "D:/path/to/BIM-Resilience")
@@ -135,43 +112,44 @@ Sys.setenv(RESILIENCE_DATA = "D:/path/to/local-analysis-data")  # optional
 
 ---
 
-## 5. What is / isn’t on GitHub
+## What is / isn’t on GitHub
 
-| On GitHub | Local only (gitignored `data/`) |
-|-----------|----------------------------------|
-| Starting FLStocks + `advice.csv` in `inst/extdata/` | Full SS3 / SAM folders |
-| Package `R/`, notebooks, docs, beamer sources | Generated `data/om/`, `data/TAC/` |
-| `renv.lock` | Knit HTML under `report/html/` |
+| On GitHub | Local only (gitignored) |
+|-----------|-------------------------|
+| Starting FLStocks + `advice.csv` in `inst/extdata/` | Full SS3 / SAM under `data/inputs/` |
+| Package `R/`, report Rmds, latex/beamer **sources**, docs | Generated `data/om/`, `data/TAC/`, `data/plot-objects/` |
+| `scripts/setup_renv.R`, `renv.lock` | Knit HTML/PDF/docx, `report/cache/`, beamer PDFs, Word copies |
+| | `scripts/_local/` (one-shot migrate helpers) |
 
-SAG time series and reference points are **downloaded** via `icesSAG` when you knit (unless you place a local sdGraphs cache under `data/inputs/`).
+SAG time series are **downloaded** via `icesSAG` when you knit (unless you place a local sdGraphs cache under `data/inputs/`).
 
 See [`data/README.md`](data/README.md).
 
 ---
 
-## 6. Deliverables (after a successful run)
+## Deliverables (after a successful run)
 
 | Item | Location |
 |------|----------|
 | Executive summary | [`docs/executive_summary.md`](docs/executive_summary.md) |
 | Main report draft | [`docs/report_main.md`](docs/report_main.md) |
 | TAC CSVs | `data/TAC/csv/{pel,dem,neph,iccat}-f.csv` |
-| TAC appendix (LaTeX / PDF) | `report/latex/` |
-| Beamer | `report/beamer/` |
+| TAC appendix (LaTeX / PDF) | `report/latex/` (build locally) |
+| Beamer | `report/beamer/*.tex` → PDF locally |
 | Manuscript outline | [`docs/manuscript_outline.md`](docs/manuscript_outline.md) |
 
 ---
 
 ## Design rules (short)
 
-- Prefer **FLBacktest** / FLR generics (`fwdFbar`, `annualise`, `FLasher::fwd`, …) over new helpers — [`docs/app_vs_package.md`](docs/app_vs_package.md).
+- Prefer **FLBacktest** / FLR generics over new helpers — [`docs/app_vs_package.md`](docs/app_vs_package.md).
 - Fail fast: do not set `options(warn = -1)` for production knits.
-- Rebuild packaged stocks from local assessments only when needed: `source("data-raw/ship_stocks.R")`.
+- Rebuild packaged stocks from local assessments only when needed: `source("data-raw/ship_stocks.R")` (maintainer path; needs local SS3/SAM).
 
-### Refreshing `renv.lock` (on a machine that already works)
+### Refreshing `renv.lock` (working machine only)
 
 ```bash
 Rscript scripts/setup_renv.R
 ```
 
-Then commit the updated `renv.lock` so the next PC can `renv::restore()`.
+Commit the updated `renv.lock` so the next PC can `renv::restore()`.
