@@ -1,8 +1,10 @@
 # BIM-Resilience
 
-Biological TAC / productivity scenarios. Default branch: **`release`**.
+**Status:** prototype release — runnable pipeline for virgin-machine install and smoke tests. APIs, notebooks, and package pins may still change.
 
-Project layout matches [backtest-ices](https://github.com/laurieKell/backtest-ices): app helpers in `R/`, notebooks in `Rmd/`, tracked seeds in `data/`, orchestration in `scripts/`. Shared FLR engine: [FLBacktest](https://github.com/laurieKell/FLBacktest). **Not** an R package — no `DESCRIPTION` / `inst/extdata`.
+Biological TAC / productivity scenarios (ICES + ICCAT). Default branch: **`release`**.
+
+Same app layout as [backtest-ices](https://github.com/laurieKell/backtest-ices): `R/`, `Rmd/`, tracked seeds in `data/`, orchestration in `scripts/`. Shared FLR engine: [FLBacktest](https://github.com/laurieKell/FLBacktest). This repo is an **application**, not an R package.
 
 ---
 
@@ -14,7 +16,7 @@ Working directory = clone root. Do these **in order**.
 
 | Need | Notes |
 |------|--------|
-| **R** | **4.6.1** (matches `renv.lock`) |
+| **R** | Version in `renv.lock` (currently **4.6.1**) |
 | **Rtools** (Windows) | **Rtools45** |
 | **Git** | This repo + `laurieKell/FLBacktest` + `flr/*` |
 | **Network** | CRAN, GitHub, ICES SAG |
@@ -88,6 +90,6 @@ Sys.setenv(RESILIENCE_DATA = "D:/path/to/local-analysis-data")  # optional
 | `data/advice/advice.csv` | Tracked advice bridge |
 | `scripts/finalise/` | Stage figs, QA, appendix PDF |
 | `tex/` | TAC appendix LaTeX sources |
-| `renv.lock` | Exact package set |
+| `renv.lock` | Package set for this prototype |
 
 Prefer **FLBacktest** / FLR generics for projection and stock ops; keep app `R/` for project I/O and scenario tables only.
